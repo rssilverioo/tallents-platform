@@ -1,0 +1,35 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client"
+  // ✅ obrigatório nesse provider
+  // caminho relativo à pasta prisma/
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  // ⚠️ NÃO coloca url aqui no Prisma 7 (fica no prisma.config.ts)
+}
+
+model Analyst {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  password  String
+  createdAt DateTime @default(now())
+
+  sessions  AnalystSession[]
+}
+
+model AnalystSession {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  analystId String
+  analyst   Analyst  @relation(fields: [analystId], references: [id], onDelete: Cascade)
+
+  @@index([analystId])
+  @@index([expiresAt])
+}

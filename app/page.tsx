@@ -222,7 +222,7 @@ export default function HomePage() {
               src="/videos/2.mp4"
             />
             <VideoCard
-              title="Depoimento — Francisco "
+              title="Depoimento — Francisco Ortega"
               desc="Como o conteúdo por posição trouxe clareza nos movimentos e funções."
               src="/videos/3.mp4"
             />
