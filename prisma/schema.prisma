@@ -10,10 +10,10 @@ datasource db {
 }
 
 model Analyst {
-  id        String           @id @default(cuid())
-  username  String           @unique
+  id        String   @id @default(cuid())
+  username  String   @unique
   password  String
-  createdAt DateTime         @default(now())
+  createdAt DateTime @default(now())
 
   googleAccessToken  String?
   googleRefreshToken String?
