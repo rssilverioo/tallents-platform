@@ -5,8 +5,9 @@ import { usePathname } from "next/navigation";
 
 const items = [
   { href: "/dashboard/athletes", label: "Atletas" },
-  { href: "/dashboard/reports", label: "Relatórios" },
   { href: "/dashboard/scout", label: "Scout" },
+  { href: "/dashboard/reports", label: "Relatórios" },
+  { href: "/dashboard/meetings", label: "Encontros" },
 ];
 
 function cx(...classes: Array<string | false | undefined>) {
@@ -31,7 +32,7 @@ export default function Sidebar() {
 
       <div className="mt-6 space-y-2">
         {items.map((it) => {
-          const active = pathname === it.href;
+          const active = pathname === it.href || pathname.startsWith(it.href + "/");
           return (
             <Link
               key={it.href}
@@ -58,7 +59,7 @@ export default function Sidebar() {
       <div className="mt-auto space-y-3">
         <div className="rounded-2xl bg-white/5 p-3 ring-1 ring-white/10">
           <p className="text-xs text-zinc-300">Status</p>
-          <p className="mt-1 text-sm font-semibold">Mock mode</p>
+          <p className="mt-1 text-sm font-semibold">Online</p>
         </div>
 
         <Link

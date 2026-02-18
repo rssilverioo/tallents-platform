@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import ScoutModal, { ScoutModalValue } from "./ScoutModal";
 
 declare global {
@@ -115,7 +116,7 @@ type Clip = {
   createdAt: number;
   label: string;
   description: string;
-  confidence: number;
+  confidence: "baixa" | "média" | "alta";
 };
 
 /* ---------------- pdf numbers only ---------------- */
@@ -172,7 +173,14 @@ function openPrintPdf(counts: ScoutCounts) {
 }
 
 /* ---------------- component ---------------- */
-export default function ScoutPlayer() {
+export default function ScoutPlayer({
+  athleteId,
+  athleteName,
+}: {
+  athleteId: string;
+  athleteName: string;
+}) {
+  const router = useRouter();
   const playerRef = useRef<any>(null);
   const playerHostId = "tallents-yt-player";
   const activeClipEndRef = useRef<number | null>(null);
@@ -189,6 +197,7 @@ export default function ScoutPlayer() {
 
   const [activeClipId, setActiveClipId] = useState<string | null>(null);
   const [tab, setTab] = useState<"passes" | "ofensivo" | "defensivo">("passes");
+  const [saving, setSaving] = useState(false);
 
   /* load youtube iframe api once */
   useEffect(() => {
@@ -337,6 +346,43 @@ export default function ScoutPlayer() {
     return { totalActions, totalClips, totalDuration };
   }, [counts, clips]);
 
+  async function finishScout() {
+    if (!youtubeUrl) return alert("Carregue um vídeo do YouTube antes de concluir.");
+    const totalActions = Object.values(counts).reduce((a, b) => a + b, 0);
+    if (totalActions === 0) return alert("Registre pelo menos uma ação antes de concluir.");
+
+    setSaving(true);
+    try {
+      const res = await fetch("/api/scouts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          athleteId,
+          youtubeUrl,
+          counts,
+          clips: clips.map((c) => ({
+            start: c.start,
+            end: c.end,
+            label: c.label,
+            description: c.description,
+            confidence: c.confidence,
+          })),
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        alert(data.error || "Erro ao salvar scout");
+        return;
+      }
+
+      router.push("/dashboard/reports");
+      router.refresh();
+    } finally {
+      setSaving(false);
+    }
+  }
+
   const actions = tab === "passes" ? PASS_ACTIONS : tab === "ofensivo" ? OFF_ACTIONS : DEF_ACTIONS;
 
   return (
@@ -409,6 +455,15 @@ export default function ScoutPlayer() {
             onClick={() => openPrintPdf(counts)}
           >
             PDF (números)
+          </button>
+
+          <button
+            type="button"
+            disabled={saving}
+            className="rounded-2xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white ring-1 ring-emerald-500/25 hover:bg-emerald-500 disabled:opacity-50"
+            onClick={finishScout}
+          >
+            {saving ? "Salvando..." : "Concluir Scout"}
           </button>
         </div>
 

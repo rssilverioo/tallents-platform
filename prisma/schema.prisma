@@ -33,3 +33,70 @@ model AnalystSession {
   @@index([analystId])
   @@index([expiresAt])
 }
+
+model Athlete {
+  id                String   @id @default(cuid())
+  name              String
+  team              String
+  position          String
+  remainingMeetings Int      @default(0)
+  photo             String   @default("")
+  createdAt         DateTime @default(now())
+
+  scouts   Scout[]
+  reports  Report[]
+  meetings Meeting[]
+}
+
+model Scout {
+  id         String      @id @default(cuid())
+  youtubeUrl String
+  counts     Json
+  createdAt  DateTime    @default(now())
+
+  athleteId  String
+  athlete    Athlete     @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  clips      ScoutClip[]
+  report     Report?
+}
+
+model ScoutClip {
+  id          String   @id @default(cuid())
+  start       Float
+  end         Float
+  label       String
+  description String   @default("")
+  confidence  String
+  createdAt   DateTime @default(now())
+
+  scoutId     String
+  scout       Scout    @relation(fields: [scoutId], references: [id], onDelete: Cascade)
+}
+
+model Report {
+  id          String   @id @default(cuid())
+  title       String
+  summary     String
+  tags        Json
+  rating      Int
+  intensity   Int
+  decision    Int
+  positioning Int
+  createdAt   DateTime @default(now())
+
+  athleteId   String
+  athlete     Athlete  @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  scoutId     String   @unique
+  scout       Scout    @relation(fields: [scoutId], references: [id], onDelete: Cascade)
+}
+
+model Meeting {
+  id          String   @id @default(cuid())
+  title       String
+  description String   @default("")
+  date        DateTime
+  createdAt   DateTime @default(now())
+
+  athleteId   String
+  athlete     Athlete  @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+}

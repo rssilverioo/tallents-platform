@@ -34,6 +34,11 @@ function makeClient() {
   return new PrismaClient({ adapter });
 }
 
+// Invalida cache se o client não tem os models esperados
+if (globalForPrisma.prisma && !("report" in globalForPrisma.prisma)) {
+  globalForPrisma.prisma = undefined;
+}
+
 export const prisma = globalForPrisma.prisma ?? makeClient();
 
 if (process.env.NODE_ENV !== "production") {
