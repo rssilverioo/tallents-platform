@@ -10,17 +10,16 @@ datasource db {
 }
 
 model Analyst {
-  id        String   @id @default(cuid())
-  username  String   @unique
-  password  String
-  createdAt DateTime @default(now())
+  id                  String   @id @default(cuid())
+  username            String   @unique
+  password            String
+  createdAt           DateTime @default(now())
+  googleAccessToken   String?
+  googleRefreshToken  String?
+  googleTokenExpiry   DateTime?
 
-  googleAccessToken  String?
-  googleRefreshToken String?
-  googleTokenExpiry  DateTime?
-
-  sessions       AnalystSession[]
-  analystReports AnalystReport[]
+  sessions        AnalystSession[]
+  analystReports  AnalystReport[]
 }
 
 model AnalystSession {
@@ -57,6 +56,7 @@ model AthleteSession {
   token     String   @unique
   expiresAt DateTime
   createdAt DateTime @default(now())
+
   athleteId String
   athlete   Athlete  @relation(fields: [athleteId], references: [id], onDelete: Cascade)
 
