@@ -1,18 +1,24 @@
-import Image from "next/image";
 import type { Athlete } from "./types";
 
 export default function AthleteCard({ athlete }: { athlete: Athlete }) {
+  const hasPhoto = Boolean(athlete.photo);
+
   return (
     <div className="rounded-3xl bg-white/5 p-4 ring-1 ring-white/10">
       <div className="flex items-center gap-4">
-        <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl ring-1 ring-white/10">
-          <Image
-            src={athlete.photo}
-            alt={athlete.name}
-            fill
-            className="object-cover"
-            sizes="56px"
-          />
+        <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl bg-zinc-800 ring-1 ring-white/10">
+          {hasPhoto ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={athlete.photo}
+              alt={athlete.name}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-xl font-bold text-zinc-400">
+              {athlete.name[0]?.toUpperCase()}
+            </div>
+          )}
         </div>
 
         <div className="min-w-0 flex-1">

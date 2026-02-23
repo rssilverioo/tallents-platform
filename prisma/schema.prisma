@@ -2,23 +2,25 @@
 
 generator client {
   provider = "prisma-client"
-  // ✅ obrigatório nesse provider
-  // caminho relativo à pasta prisma/
   output   = "../app/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
-  // ⚠️ NÃO coloca url aqui no Prisma 7 (fica no prisma.config.ts)
 }
 
 model Analyst {
-  id        String   @id @default(cuid())
-  username  String   @unique
+  id        String           @id @default(cuid())
+  username  String           @unique
   password  String
-  createdAt DateTime @default(now())
+  createdAt DateTime         @default(now())
 
-  sessions  AnalystSession[]
+  googleAccessToken  String?
+  googleRefreshToken String?
+  googleTokenExpiry  DateTime?
+
+  sessions       AnalystSession[]
+  analystReports AnalystReport[]
 }
 
 model AnalystSession {
@@ -26,7 +28,6 @@ model AnalystSession {
   token     String   @unique
   expiresAt DateTime
   createdAt DateTime @default(now())
-
   analystId String
   analyst   Analyst  @relation(fields: [analystId], references: [id], onDelete: Cascade)
 
@@ -35,17 +36,32 @@ model AnalystSession {
 }
 
 model Athlete {
-  id                String   @id @default(cuid())
+  id                String          @id @default(cuid())
   name              String
   team              String
   position          String
-  remainingMeetings Int      @default(0)
-  photo             String   @default("")
-  createdAt         DateTime @default(now())
+  remainingMeetings Int             @default(0)
+  photo             String          @default("")
+  birthDate         DateTime?
+  createdAt         DateTime        @default(now())
 
-  scouts   Scout[]
-  reports  Report[]
-  meetings Meeting[]
+  meetings        Meeting[]
+  reports         Report[]
+  scouts          Scout[]
+  athleteSessions AthleteSession[]
+  analystReports  AnalystReport[]
+}
+
+model AthleteSession {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  athleteId String
+  athlete   Athlete  @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+
+  @@index([athleteId])
+  @@index([expiresAt])
 }
 
 model Scout {
@@ -71,6 +87,34 @@ model ScoutClip {
 
   scoutId     String
   scout       Scout    @relation(fields: [scoutId], references: [id], onDelete: Cascade)
+}
+
+// Relatórios de analistas para atletas (nova funcionalidade)
+model AnalystReport {
+  id          String   @id @default(cuid())
+  title       String
+  summary     String
+  tags        String[]
+
+  rating      Int      @default(0)
+  intensity   Int      @default(0)
+  decision    Int      @default(0)
+  positioning Int      @default(0)
+
+  clips       Json     @default("[]")
+
+  analystName String
+  analystId   String?
+  analyst     Analyst? @relation(fields: [analystId], references: [id], onDelete: SetNull)
+
+  athleteId   String
+  athlete     Athlete  @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([athleteId])
+  @@index([analystId])
 }
 
 model Report {

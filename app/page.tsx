@@ -53,7 +53,7 @@ export default function HomePage() {
               Área do Analista
             </Link>
             <Link
-              href="/atletas"
+              href="/loginAtleta"
               className="w-full rounded-2xl bg-blue-600 px-4 py-2 text-center text-sm font-semibold text-white transition hover:bg-blue-500 sm:w-auto"
             >
               Área do Atleta
