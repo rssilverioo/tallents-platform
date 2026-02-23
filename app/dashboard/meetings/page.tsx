@@ -25,7 +25,7 @@ export default function MeetingsPage() {
       fetch("/api/athletes").then((r) => r.json()),
       fetch("/api/meetings").then((r) => r.json()),
     ]).then(([a, m]) => {
-      setAthletes(a);
+      setAthletes(a.athletes ?? []);
       setMeetings(m);
       setLoading(false);
     });

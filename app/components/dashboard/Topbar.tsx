@@ -3,6 +3,21 @@
 import Link from "next/link";
 
 export default function Topbar() {
+
+const handleLogout = async () => {
+    try {
+      await fetch("/api/auth/logout", {
+        method: "POST",
+      });
+
+      window.location.href = "/loginAnalista";
+    } catch (error) {
+      console.error("Erro ao sair:", error);
+    }
+  };
+
+
+
   return (
     <div className="flex flex-col gap-3 rounded-3xl bg-white/5 p-4 ring-1 ring-white/10 sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0">
@@ -22,7 +37,7 @@ export default function Topbar() {
         <button
           type="button"
           className="rounded-2xl bg-white/10 px-4 py-2 text-sm font-medium ring-1 ring-white/10 hover:bg-white/15"
-          onClick={() => alert("Mock: aqui entra o logout depois")}
+          onClick={handleLogout}
         >
           Sair
         </button>
