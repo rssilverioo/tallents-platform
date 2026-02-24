@@ -10,16 +10,14 @@ datasource db {
 }
 
 model Analyst {
-  id                  String   @id @default(cuid())
-  username            String   @unique
-  password            String
-  createdAt           DateTime @default(now())
-  googleAccessToken   String?
-  googleRefreshToken  String?
-  googleTokenExpiry   DateTime?
+  id        String   @id @default(cuid())
+  username  String   @unique
+  password  String
+  createdAt DateTime @default(now())
 
-  sessions        AnalystSession[]
-  analystReports  AnalystReport[]
+  sessions       AnalystSession[]
+  analystReports AnalystReport[]
+  agendaEvents   AgendaEvent[]
 }
 
 model AnalystSession {
@@ -44,11 +42,11 @@ model Athlete {
   birthDate         DateTime?
   createdAt         DateTime        @default(now())
 
-  meetings        Meeting[]
-  reports         Report[]
-  scouts          Scout[]
+  reports        Report[]
+  scouts         Scout[]
   athleteSessions AthleteSession[]
   analystReports  AnalystReport[]
+  agendaEvents    AgendaEvent[]
 }
 
 model AthleteSession {
@@ -62,6 +60,30 @@ model AthleteSession {
 
   @@index([athleteId])
   @@index([expiresAt])
+}
+
+model AgendaEvent {
+  id          String   @id @default(cuid())
+  title       String
+  description String   @default("")
+  startDate   DateTime
+  endDate     DateTime
+
+  // geral | atleta | pais | avaliacao | aula_experimental
+  category  String  @default("geral")
+  completed Boolean @default(false)
+
+  analystId String
+  analyst   Analyst @relation(fields: [analystId], references: [id], onDelete: Cascade)
+
+  athleteId String?
+  athlete   Athlete? @relation(fields: [athleteId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([analystId])
+  @@index([startDate])
 }
 
 model Scout {
@@ -89,7 +111,6 @@ model ScoutClip {
   scout       Scout    @relation(fields: [scoutId], references: [id], onDelete: Cascade)
 }
 
-// Relatórios de analistas para atletas (nova funcionalidade)
 model AnalystReport {
   id          String   @id @default(cuid())
   title       String
@@ -132,15 +153,4 @@ model Report {
   athlete     Athlete  @relation(fields: [athleteId], references: [id], onDelete: Cascade)
   scoutId     String   @unique
   scout       Scout    @relation(fields: [scoutId], references: [id], onDelete: Cascade)
-}
-
-model Meeting {
-  id          String   @id @default(cuid())
-  title       String
-  description String   @default("")
-  date        DateTime
-  createdAt   DateTime @default(now())
-
-  athleteId   String
-  athlete     Athlete  @relation(fields: [athleteId], references: [id], onDelete: Cascade)
 }

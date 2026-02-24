@@ -2,7 +2,6 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 
-// ✅ Prisma 7 generated (export está em client.ts)
 import { PrismaClient } from "../generated/prisma/client";
 
 const globalForPrisma = globalThis as unknown as {
@@ -34,8 +33,8 @@ function makeClient() {
   return new PrismaClient({ adapter });
 }
 
-// Invalida cache se o client não tem os models esperados
-if (globalForPrisma.prisma && !("report" in globalForPrisma.prisma)) {
+// Invalida cache se o client não tem o model agendaEvent
+if (globalForPrisma.prisma && !("agendaEvent" in globalForPrisma.prisma)) {
   globalForPrisma.prisma = undefined;
 }
 

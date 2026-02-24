@@ -7,7 +7,6 @@ const items = [
   { href: "/dashboard/athletes", label: "Atletas" },
   { href: "/dashboard/scout", label: "Scout" },
   { href: "/dashboard/reports", label: "Relatórios" },
-  { href: "/dashboard/meetings", label: "Encontros" },
   { href: "/dashboard/agenda", label: "Agenda" },
 ];
 
