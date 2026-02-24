@@ -438,7 +438,7 @@ export default function AgendaPage() {
                 ].join(" ")}
               >
                 {/* Date badge */}
-                <div className={`flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-xl ring-1 ${meta.badge}`} style={{ ringColor: "transparent" }}>
+                <div className={`flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-xl ring-1 ring-transparent ${meta.badge}`}>
                   <span className="text-sm font-bold leading-none">
                     {new Date(event.startDate).getDate()}
                   </span>
