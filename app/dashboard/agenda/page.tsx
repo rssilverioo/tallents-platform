@@ -80,11 +80,16 @@ const EMPTY_FORM = {
   title: "",
   description: "",
   date: "",
-  startTime: "",
-  endTime: "",
+  startHour: "",
+  startMinute: "",
+  endHour: "",
+  endMinute: "",
   athleteId: "",
   category: "geral" as Category,
 };
+
+const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"));
+const MINUTES = ["00", "15", "30", "45"];
 
 const MONTHS_PT = [
   "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
@@ -207,14 +212,17 @@ export default function AgendaPage() {
     setSaveErro("");
     setSaving(true);
     try {
+      const startDate = new Date(`${form.date}T${form.startHour}:${form.startMinute}:00`);
+      const endDate = new Date(`${form.date}T${form.endHour}:${form.endMinute}:00`);
+
       const res = await fetch("/api/agenda", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: form.title,
           description: form.description,
-          startDate: `${form.date}T${form.startTime}:00`,
-          endDate: `${form.date}T${form.endTime}:00`,
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString(),
           category: form.category,
           athleteId: form.athleteId || null,
         }),
@@ -610,25 +618,59 @@ export default function AgendaPage() {
                   <label className="mb-1.5 block text-xs font-medium text-zinc-400">
                     Início <span className="text-red-400">*</span>
                   </label>
-                  <input
-                    type="time"
-                    required
-                    value={form.startTime}
-                    onChange={(e) => setForm((f) => ({ ...f, startTime: e.target.value }))}
-                    className="w-full rounded-xl bg-zinc-800 px-3.5 py-2.5 text-sm text-white ring-1 ring-white/10 outline-none transition focus:ring-2 focus:ring-blue-500"
-                  />
+                  <div className="flex gap-2">
+                    <select
+                      required
+                      value={form.startHour}
+                      onChange={(e) => setForm((f) => ({ ...f, startHour: e.target.value }))}
+                      className="w-full rounded-xl bg-zinc-800 px-3 py-2.5 text-sm text-white ring-1 ring-white/10 outline-none transition focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="" disabled>Hora</option>
+                      {HOURS.map((h) => (
+                        <option key={h} value={h}>{h}h</option>
+                      ))}
+                    </select>
+                    <select
+                      required
+                      value={form.startMinute}
+                      onChange={(e) => setForm((f) => ({ ...f, startMinute: e.target.value }))}
+                      className="w-full rounded-xl bg-zinc-800 px-3 py-2.5 text-sm text-white ring-1 ring-white/10 outline-none transition focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="" disabled>Min</option>
+                      {MINUTES.map((m) => (
+                        <option key={m} value={m}>{m}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
                 <div>
                   <label className="mb-1.5 block text-xs font-medium text-zinc-400">
                     Fim <span className="text-red-400">*</span>
                   </label>
-                  <input
-                    type="time"
-                    required
-                    value={form.endTime}
-                    onChange={(e) => setForm((f) => ({ ...f, endTime: e.target.value }))}
-                    className="w-full rounded-xl bg-zinc-800 px-3.5 py-2.5 text-sm text-white ring-1 ring-white/10 outline-none transition focus:ring-2 focus:ring-blue-500"
-                  />
+                  <div className="flex gap-2">
+                    <select
+                      required
+                      value={form.endHour}
+                      onChange={(e) => setForm((f) => ({ ...f, endHour: e.target.value }))}
+                      className="w-full rounded-xl bg-zinc-800 px-3 py-2.5 text-sm text-white ring-1 ring-white/10 outline-none transition focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="" disabled>Hora</option>
+                      {HOURS.map((h) => (
+                        <option key={h} value={h}>{h}h</option>
+                      ))}
+                    </select>
+                    <select
+                      required
+                      value={form.endMinute}
+                      onChange={(e) => setForm((f) => ({ ...f, endMinute: e.target.value }))}
+                      className="w-full rounded-xl bg-zinc-800 px-3 py-2.5 text-sm text-white ring-1 ring-white/10 outline-none transition focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="" disabled>Min</option>
+                      {MINUTES.map((m) => (
+                        <option key={m} value={m}>{m}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </div>
 
