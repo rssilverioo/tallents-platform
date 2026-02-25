@@ -62,6 +62,8 @@ export async function POST(req: Request) {
   const clipsRaw = body.clips;
   const clips = Array.isArray(clipsRaw) ? clipsRaw : [];
 
+  const counts = body.counts && typeof body.counts === "object" ? body.counts : {};
+
   if (!athleteId) return NextResponse.json({ error: "athleteId obrigatório" }, { status: 400 });
   if (!title) return NextResponse.json({ error: "title obrigatório" }, { status: 400 });
   if (!summary) return NextResponse.json({ error: "summary obrigatório" }, { status: 400 });
@@ -69,26 +71,32 @@ export async function POST(req: Request) {
   const athleteExists = await prisma.athlete.findUnique({ where: { id: athleteId } });
   if (!athleteExists) return NextResponse.json({ error: "Atleta não encontrado" }, { status: 404 });
 
-  const report = await prisma.analystReport.create({
-    data: {
-      athleteId,
-      title,
-      summary,
-      tags,
-      rating,
-      intensity,
-      decision,
-      positioning,
-      clips,
-      analystName: analyst?.username ?? "Analista",
-      analystId: analyst?.id ?? null,
-    },
-    include: {
-      athlete: {
-        select: { id: true, name: true, team: true, position: true, photo: true },
+  try {
+    const report = await prisma.analystReport.create({
+      data: {
+        athleteId,
+        title,
+        summary,
+        tags,
+        rating,
+        intensity,
+        decision,
+        positioning,
+        clips,
+        counts,
+        analystName: analyst?.username ?? "Analista",
+        analystId: analyst?.id ?? null,
       },
-    },
-  });
+      include: {
+        athlete: {
+          select: { id: true, name: true, team: true, position: true, photo: true },
+        },
+      },
+    });
 
-  return NextResponse.json({ ok: true, report }, { status: 201 });
+    return NextResponse.json({ ok: true, report }, { status: 201 });
+  } catch (err) {
+    console.error("POST /api/analyst-reports error:", err);
+    return NextResponse.json({ error: "Erro ao salvar relatório" }, { status: 500 });
+  }
 }

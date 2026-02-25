@@ -123,6 +123,7 @@ model AnalystReport {
   positioning Int      @default(0)
 
   clips       Json     @default("[]")
+  counts      Json     @default("{}")
 
   analystName String
   analystId   String?

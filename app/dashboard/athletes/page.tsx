@@ -27,8 +27,11 @@ export default function AthletesPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
+  const [editingAthlete, setEditingAthlete] = useState<Athlete | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [erro, setErro] = useState("");
   const firstInputRef = useRef<HTMLInputElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -60,6 +63,24 @@ export default function AthletesPage() {
 
   function openModal() {
     setForm(EMPTY_FORM);
+    setEditingAthlete(null);
+    setErro("");
+    setModalOpen(true);
+    setTimeout(() => firstInputRef.current?.focus(), 50);
+  }
+
+  function openEditModal(athlete: Athlete) {
+    setForm({
+      name: athlete.name,
+      team: athlete.team,
+      position: athlete.position,
+      birthDate: athlete.birthDate
+        ? new Date(athlete.birthDate).toISOString().split("T")[0]
+        : "",
+      remainingMeetings: String(athlete.remainingMeetings),
+      photo: athlete.photo ?? "",
+    });
+    setEditingAthlete(athlete);
     setErro("");
     setModalOpen(true);
     setTimeout(() => firstInputRef.current?.focus(), 50);
@@ -93,6 +114,7 @@ export default function AthletesPage() {
 
   function closeModal() {
     setModalOpen(false);
+    setEditingAthlete(null);
     setErro("");
   }
 
@@ -105,19 +127,29 @@ export default function AthletesPage() {
     const timeout = setTimeout(() => controller.abort(), 20000);
 
     try {
-      const res = await fetch("/api/athletes", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        signal: controller.signal,
-        body: JSON.stringify({
-          name: form.name,
-          team: form.team,
-          position: form.position,
-          birthDate: form.birthDate || undefined,
-          remainingMeetings: Number(form.remainingMeetings),
-          photo: form.photo || undefined,
-        }),
-      });
+      const body = {
+        name: form.name,
+        team: form.team,
+        position: form.position,
+        birthDate: form.birthDate || undefined,
+        remainingMeetings: Number(form.remainingMeetings),
+        photo: form.photo || undefined,
+      };
+
+      const res = editingAthlete
+        ? await fetch(`/api/athletes/${editingAthlete.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            signal: controller.signal,
+            body: JSON.stringify(body),
+          })
+        : await fetch("/api/athletes", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            signal: controller.signal,
+            body: JSON.stringify(body),
+          });
+
       clearTimeout(timeout);
 
       const text = await res.text();
@@ -141,11 +173,28 @@ export default function AthletesPage() {
     }
   }
 
+  async function handleDelete(id: string) {
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/athletes/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        setAthletes((prev) => prev.filter((a) => a.id !== id));
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setDeleting(false);
+      setDeleteConfirmId(null);
+    }
+  }
+
   const field = (key: keyof typeof form) => ({
     value: form[key],
     onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
       setForm((f) => ({ ...f, [key]: e.target.value })),
   });
+
+  const isEditing = Boolean(editingAthlete);
 
   return (
     <div className="space-y-5">
@@ -235,12 +284,54 @@ export default function AthletesPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {athletes.map((a) => (
-            <AthleteCard key={a.id} athlete={a} />
+            <div key={a.id} className="relative">
+              <AthleteCard
+                athlete={a}
+                onEdit={openEditModal}
+                onDelete={(id) => setDeleteConfirmId(id)}
+              />
+            </div>
           ))}
         </div>
       )}
 
-      {/* Add Athlete Modal */}
+      {/* Delete Confirm Dialog */}
+      {deleteConfirmId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setDeleteConfirmId(null)}
+          />
+          <div className="relative w-full max-w-sm rounded-3xl bg-zinc-900 ring-1 ring-white/10 shadow-2xl p-6">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-500/15 ring-1 ring-red-500/20 mx-auto mb-4">
+              <svg className="h-6 w-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+              </svg>
+            </div>
+            <h3 className="text-center font-semibold text-white mb-1">Excluir atleta?</h3>
+            <p className="text-center text-sm text-zinc-400 mb-6">
+              Esta ação é irreversível. Todos os scouts e relatórios deste atleta serão excluídos.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteConfirmId(null)}
+                className="flex-1 rounded-xl bg-white/5 py-2.5 text-sm font-medium text-zinc-300 ring-1 ring-white/10 transition hover:bg-white/10"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => handleDelete(deleteConfirmId)}
+                disabled={deleting}
+                className="flex-1 rounded-xl bg-red-600 py-2.5 text-sm font-semibold text-white transition hover:bg-red-500 disabled:opacity-50"
+              >
+                {deleting ? "Excluindo..." : "Excluir"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add / Edit Athlete Modal */}
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           {/* Backdrop */}
@@ -254,8 +345,12 @@ export default function AthletesPage() {
             {/* Header */}
             <div className="flex items-center justify-between border-b border-white/5 px-6 py-4">
               <div>
-                <h2 className="font-semibold text-white">Novo atleta</h2>
-                <p className="mt-0.5 text-xs text-zinc-500">Preencha os dados do atleta</p>
+                <h2 className="font-semibold text-white">
+                  {isEditing ? "Editar atleta" : "Novo atleta"}
+                </h2>
+                <p className="mt-0.5 text-xs text-zinc-500">
+                  {isEditing ? "Atualize os dados do atleta" : "Preencha os dados do atleta"}
+                </p>
               </div>
               <button
                 onClick={closeModal}
@@ -432,7 +527,7 @@ export default function AthletesPage() {
                   disabled={saving}
                   className="flex-1 rounded-xl bg-blue-600 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:opacity-50"
                 >
-                  {saving ? "Salvando..." : "Salvar atleta"}
+                  {saving ? "Salvando..." : isEditing ? "Salvar alterações" : "Salvar atleta"}
                 </button>
               </div>
             </form>

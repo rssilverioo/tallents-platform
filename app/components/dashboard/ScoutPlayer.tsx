@@ -307,23 +307,51 @@ export default function ScoutPlayer({ athletes }: { athletes: AthleteOption[] })
     setSaveError("");
     setSaving(true);
     try {
-      const res = await fetch("/api/analyst-reports", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          athleteId: selectedAthleteId,
-          title: finalForm.title,
-          summary: finalForm.summary,
-          tags: finalForm.tags,
-          rating: finalForm.rating,
-          intensity: finalForm.intensity,
-          decision: finalForm.decision,
-          positioning: finalForm.positioning,
-          clips,
+      const clipPayload = clips.map((c) => ({
+        start: c.start,
+        end: c.end,
+        label: c.label,
+        description: c.description,
+        confidence: c.confidence,
+      }));
+
+      const [scoutRes, reportRes] = await Promise.all([
+        fetch("/api/scouts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            athleteId: selectedAthleteId,
+            youtubeUrl,
+            counts,
+            clips: clipPayload,
+          }),
         }),
-      });
-      const data = await res.json();
-      if (!res.ok) { setSaveError(data?.error || "Erro ao salvar."); return; }
+        fetch("/api/analyst-reports", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            athleteId: selectedAthleteId,
+            title: finalForm.title,
+            summary: finalForm.summary,
+            tags: finalForm.tags,
+            rating: finalForm.rating,
+            intensity: finalForm.intensity,
+            decision: finalForm.decision,
+            positioning: finalForm.positioning,
+            clips: clipPayload,
+            counts,
+          }),
+        }),
+      ]);
+
+      const reportData = await reportRes.json().catch(() => ({}));
+      if (!reportRes.ok) { setSaveError((reportData as any)?.error || "Erro ao salvar relatório."); return; }
+      const scoutData = await scoutRes.json().catch(() => ({}));
+      if (!scoutRes.ok) {
+        setSaveError((scoutData as any)?.error || "Erro ao salvar scout.");
+        return;
+      }
+
       setFinalizeOpen(false);
       router.push("/dashboard/reports");
     } catch {
