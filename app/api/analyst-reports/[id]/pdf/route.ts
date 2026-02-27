@@ -49,7 +49,6 @@ export async function GET(
 
     const element = React.createElement(ReportPDF, { report: reportData }) as React.ReactElement<DocumentProps>;
     const buffer = await renderToBuffer(element);
-
     const filename = `scout-${report.athlete.name.replace(/\s+/g, "-")}.pdf`;
 
     return new Response(new Uint8Array(buffer), {
