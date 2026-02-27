@@ -30,10 +30,10 @@ export default function AthleteCard({ athlete, onEdit, onDelete }: AthleteCardPr
   const meeting = getMeetingStyle(athlete.remainingMeetings);
 
   return (
-    <div className="group relative flex flex-col overflow-hidden rounded-3xl bg-zinc-900 ring-1 ring-white/8 transition duration-200 hover:ring-white/15 hover:shadow-2xl hover:shadow-black/40 min-h-[180px]">
+    <div className="group relative flex flex-col overflow-hidden rounded-3xl bg-zinc-900 ring-1 ring-white/8 transition duration-200 hover:ring-white/15 hover:shadow-2xl hover:shadow-black/40 min-h-45">
 
       {/* Gradient accent top strip */}
-      <div className={`absolute inset-x-0 top-0 h-24 bg-gradient-to-b ${pos.accent} to-transparent pointer-events-none`} />
+      <div className={`absolute inset-x-0 top-0 h-24 bg-linear-to-b ${pos.accent} to-transparent pointer-events-none`} />
 
       {/* Action buttons — appear on hover */}
       {(onEdit || onDelete) && (

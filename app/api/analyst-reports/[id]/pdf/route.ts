@@ -1,4 +1,4 @@
-import { renderToBuffer } from "@react-pdf/renderer";
+import { renderToBuffer, type DocumentProps } from "@react-pdf/renderer";
 import React from "react";
 import { prisma } from "@/app/lib/prisma";
 import { ReportPDF, type ReportData } from "@/app/components/pdf/ReportPDF";
@@ -47,11 +47,12 @@ export async function GET(
       },
     };
 
-    const buffer = await renderToBuffer(React.createElement(ReportPDF, { report: reportData }));
+    const element = React.createElement(ReportPDF, { report: reportData }) as React.ReactElement<DocumentProps>;
+    const buffer = await renderToBuffer(element);
 
     const filename = `scout-${report.athlete.name.replace(/\s+/g, "-")}.pdf`;
 
-    return new Response(buffer, {
+    return new Response(new Uint8Array(buffer), {
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="${filename}"`,
