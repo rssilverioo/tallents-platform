@@ -23,6 +23,26 @@ type Clip = {
   confidence: "baixa" | "média" | "alta";
 };
 
+type ScoutCounts = {
+  passeErrado: number;
+  passeParaTras: number;
+  passeErradoDefensivo: number;
+  passeCertoOfensivo: number;
+  passeDecisivo: number;
+  passeEntreLinhas: number;
+  cruzamento: number;
+  assistencia: number;
+  finalizacaoNoAlvo: number;
+  finalizacaoFora: number;
+  gol: number;
+  desarme: number;
+  interceptacao: number;
+  recuperacaoPosse: number;
+  pressaoPosPerda: number;
+  aereoGanho: number;
+  aereoPerdido: number;
+};
+
 type Report = {
   id: string;
   title: string;
@@ -35,6 +55,7 @@ type Report = {
   analystName: string;
   createdAt: string;
   clips: Clip[];
+  counts: ScoutCounts | null;
   athlete: AthleteOption;
 };
 
@@ -261,21 +282,33 @@ function ReportCard({ report }: { report: Report }) {
           })}
         </div>
 
-        <button
-          onClick={() => setExpanded((v) => !v)}
-          className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-xl bg-white/5 py-2 text-xs text-zinc-400 ring-1 ring-white/5 transition hover:bg-white/10 hover:text-zinc-200"
-        >
-          <svg
-            className={`h-3.5 w-3.5 transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
+        <div className="mt-4 flex gap-2">
+          <button
+            onClick={() => setExpanded((v) => !v)}
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-white/5 py-2 text-xs text-zinc-400 ring-1 ring-white/5 transition hover:bg-white/10 hover:text-zinc-200"
           >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-          </svg>
-          {expanded ? "Recolher" : "Ver resumo e métricas"}
-        </button>
+            <svg
+              className={`h-3.5 w-3.5 transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+            {expanded ? "Recolher" : "Ver resumo e métricas"}
+          </button>
+          <a
+            href={`/api/analyst-reports/${report.id}/pdf`}
+            download
+            className="flex items-center gap-1.5 rounded-xl bg-blue-600/20 px-3 py-2 text-xs font-semibold text-blue-300 ring-1 ring-blue-500/25 transition hover:bg-blue-600/30 hover:text-blue-200"
+          >
+            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+            </svg>
+            Baixar PDF
+          </a>
+        </div>
       </div>
 
       {expanded && (
@@ -298,7 +331,7 @@ function ReportCard({ report }: { report: Report }) {
                 Lances cortados ({report.clips.length})
               </p>
               <div className="space-y-2">
-                {report.clips.map((c) => {
+                {report.clips.map((c, idx) => {
                   const confStyle =
                     c.confidence === "alta"
                       ? "text-emerald-400 bg-emerald-500/10 ring-emerald-500/20"
@@ -309,7 +342,7 @@ function ReportCard({ report }: { report: Report }) {
                     `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
                   return (
                     <div
-                      key={c.id}
+                      key={c.id ?? idx}
                       className="rounded-2xl bg-white/5 p-3 ring-1 ring-white/10"
                     >
                       <div className="flex flex-wrap items-center gap-1.5">
@@ -334,6 +367,80 @@ function ReportCard({ report }: { report: Report }) {
               </div>
             </div>
           )}
+
+          {/* Scout counts */}
+          {report.counts && Object.keys(report.counts).length > 0 && (() => {
+            const c = report.counts as ScoutCounts;
+            const sections = [
+              {
+                label: "Passes",
+                color: "text-blue-400",
+                bg: "bg-blue-500/5",
+                ring: "ring-blue-500/15",
+                rows: [
+                  ["Passe certo ofensivo", c.passeCertoOfensivo],
+                  ["Passe decisivo",       c.passeDecisivo],
+                  ["Passe entre linhas",   c.passeEntreLinhas],
+                  ["Passe para trás",      c.passeParaTras],
+                  ["Passe errado",         c.passeErrado],
+                  ["Passe errado (def.)",  c.passeErradoDefensivo],
+                ] as [string, number][],
+              },
+              {
+                label: "Ofensivo",
+                color: "text-emerald-400",
+                bg: "bg-emerald-500/5",
+                ring: "ring-emerald-500/15",
+                rows: [
+                  ["Gol",                  c.gol],
+                  ["Assistência",          c.assistencia],
+                  ["Finalização no alvo",  c.finalizacaoNoAlvo],
+                  ["Finalização fora",     c.finalizacaoFora],
+                  ["Cruzamento",           c.cruzamento],
+                ] as [string, number][],
+              },
+              {
+                label: "Defensivo",
+                color: "text-violet-400",
+                bg: "bg-violet-500/5",
+                ring: "ring-violet-500/15",
+                rows: [
+                  ["Desarme",              c.desarme],
+                  ["Interceptação",        c.interceptacao],
+                  ["Recuperação de posse", c.recuperacaoPosse],
+                  ["Pressão pós-perda",    c.pressaoPosPerda],
+                  ["Aéreo ganho",          c.aereoGanho],
+                  ["Aéreo perdido",        c.aereoPerdido],
+                ] as [string, number][],
+              },
+            ];
+            return (
+              <div>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                  Ações registradas
+                </p>
+                <div className="grid gap-2 sm:grid-cols-3">
+                  {sections.map((sec) => (
+                    <div key={sec.label} className={`rounded-2xl p-3 ring-1 ${sec.bg} ${sec.ring}`}>
+                      <p className={`mb-2 text-xs font-bold uppercase tracking-wider ${sec.color}`}>
+                        {sec.label}
+                      </p>
+                      <div className="space-y-1">
+                        {sec.rows.map(([label, val]) => (
+                          <div key={label} className="flex items-center justify-between gap-2">
+                            <span className="text-xs text-zinc-400">{label}</span>
+                            <span className={`text-sm font-bold tabular-nums ${val > 0 ? sec.color : "text-zinc-700"}`}>
+                              {val ?? 0}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
     </div>

@@ -8,6 +8,8 @@ const items = [
   { href: "/dashboard/scout", label: "Scout" },
   { href: "/dashboard/reports", label: "Relatórios" },
   { href: "/dashboard/agenda", label: "Agenda" },
+  { href: "/dashboard/encontros", label: "Encontros" },
+  { href: "/dashboard/status", label: "Status dos Planos" },
 ];
 
 function cx(...classes: Array<string | false | undefined>) {

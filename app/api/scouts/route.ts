@@ -124,68 +124,97 @@ function generateSummary(counts: ScoutCounts, athleteName: string): string {
   return `${athleteName}: ${parts.join(", ")}.`;
 }
 
+export async function GET(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const athleteId = searchParams.get("athleteId");
+
+    if (!athleteId) {
+      return NextResponse.json({ error: "athleteId é obrigatório" }, { status: 400 });
+    }
+
+    const scouts = await prisma.scout.findMany({
+      where: { athleteId },
+      include: { clips: true },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return NextResponse.json({ scouts });
+  } catch (err) {
+    console.error("GET /api/scouts error:", err);
+    return NextResponse.json({ error: "Erro ao buscar scouts" }, { status: 500 });
+  }
+}
+
 export async function POST(req: Request) {
-  const body = await req.json();
-  const { athleteId, youtubeUrl, counts, clips } = body as {
-    athleteId: string;
-    youtubeUrl: string;
-    counts: ScoutCounts;
-    clips: ClipInput[];
-  };
+  try {
+    const body = await req.json().catch(() => null);
+    if (!body) return NextResponse.json({ error: "JSON inválido" }, { status: 400 });
 
-  if (!athleteId || !youtubeUrl || !counts) {
-    return NextResponse.json(
-      { error: "athleteId, youtubeUrl e counts são obrigatórios" },
-      { status: 400 }
-    );
-  }
+    const { athleteId, youtubeUrl, counts, clips } = body as {
+      athleteId: string;
+      youtubeUrl: string;
+      counts: ScoutCounts;
+      clips: ClipInput[];
+    };
 
-  const athlete = await prisma.athlete.findUnique({
-    where: { id: athleteId },
-  });
-  if (!athlete) {
-    return NextResponse.json(
-      { error: "Atleta não encontrado" },
-      { status: 404 }
-    );
-  }
+    if (!athleteId || !youtubeUrl || !counts) {
+      return NextResponse.json(
+        { error: "athleteId, youtubeUrl e counts são obrigatórios" },
+        { status: 400 }
+      );
+    }
 
-  const scout = await prisma.scout.create({
-    data: {
-      athleteId,
-      youtubeUrl,
-      counts: counts as any,
-      clips: {
-        create: (clips || []).map((c) => ({
-          start: c.start,
-          end: c.end,
-          label: c.label,
-          description: c.description || "",
-          confidence: c.confidence,
-        })),
+    const athlete = await prisma.athlete.findUnique({
+      where: { id: athleteId },
+    });
+    if (!athlete) {
+      return NextResponse.json(
+        { error: "Atleta não encontrado" },
+        { status: 404 }
+      );
+    }
+
+    const scout = await prisma.scout.create({
+      data: {
+        athleteId,
+        youtubeUrl,
+        counts: counts as any,
+        clips: {
+          create: (clips || []).map((c) => ({
+            start: c.start,
+            end: c.end,
+            label: c.label,
+            description: c.description || "",
+            confidence: c.confidence,
+          })),
+        },
       },
-    },
-    include: { clips: true },
-  });
+      include: { clips: true },
+    });
 
-  const metrics = computeMetrics(counts);
-  const tags = generateTags(counts);
-  const summary = generateSummary(counts, athlete.name);
-  const title = `Relatório — Scout ${athlete.name} (${athlete.position})`;
+    const metrics = computeMetrics(counts);
+    const tags = generateTags(counts);
+    const summary = generateSummary(counts, athlete.name);
+    const title = `Relatório — Scout ${athlete.name} (${athlete.position})`;
 
-  const report = await prisma.report.create({
-    data: {
-      title,
-      summary,
-      tags: tags as any,
-      rating: metrics.rating,
-      intensity: metrics.intensity,
-      decision: metrics.decision,
-      positioning: metrics.positioning,
-      athleteId,
-      scoutId: scout.id,
-    },
-  });
+    const report = await prisma.report.create({
+      data: {
+        title,
+        summary,
+        tags: tags as any,
+        rating: metrics.rating,
+        intensity: metrics.intensity,
+        decision: metrics.decision,
+        positioning: metrics.positioning,
+        athleteId,
+        scoutId: scout.id,
+      },
+    });
 
-  return NextResponse.json({ scout, report }, { status: 201 });
+    return NextResponse.json({ scout, report }, { status: 201 });
+  } catch (err) {
+    console.error("POST /api/scouts error:", err);
+    return NextResponse.json({ error: "Erro ao salvar scout" }, { status: 500 });
+  }
 }

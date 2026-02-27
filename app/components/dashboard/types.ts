@@ -5,6 +5,7 @@ export type Athlete = {
   position: string;
   remainingMeetings: number;
   photo: string;
+  birthDate?: string | null;
 };
 
 export type AthleteReport = {
