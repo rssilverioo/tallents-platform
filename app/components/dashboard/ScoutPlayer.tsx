@@ -122,8 +122,16 @@ function formatTime(t: number) {
 function parseYouTubeId(url: string) {
   try {
     const u = new URL(url.trim());
-    if (u.hostname.includes("youtu.be")) return u.pathname.replace("/", "") || "";
-    if (u.hostname.includes("youtube.com")) return u.searchParams.get("v") || "";
+    if (u.hostname.includes("youtu.be")) {
+      return u.pathname.replace(/^\//, "") || "";
+    }
+    if (u.hostname.includes("youtube.com")) {
+      const v = u.searchParams.get("v");
+      if (v) return v;
+      // /live/ID  /shorts/ID  /embed/ID  /v/ID
+      const m = u.pathname.match(/\/(?:live|shorts|embed|v)\/([^/?&#]+)/);
+      if (m) return m[1];
+    }
     return "";
   } catch {
     return "";
@@ -192,6 +200,7 @@ export default function ScoutPlayer({ athletes }: { athletes: AthleteOption[] })
   const playerHostId = "tallents-yt-player";
   const activeClipEndRef = useRef<number | null>(null);
 
+  const [withVideo, setWithVideo]   = useState(true);
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [videoId, setVideoId]       = useState("");
   const [playerReady, setPlayerReady] = useState(false);
@@ -230,8 +239,22 @@ export default function ScoutPlayer({ athletes }: { athletes: AthleteOption[] })
       try { playerRef.current?.destroy?.(); } catch {}
       playerRef.current = new window.YT.Player(playerHostId, {
         videoId,
+        width: "100%",
+        height: "100%",
         playerVars: { autoplay: 0, controls: 1, modestbranding: 1, rel: 0 },
-        events: { onReady: () => setPlayerReady(true) },
+        events: {
+          onReady: (event: any) => {
+            const iframe = event.target.getIframe();
+            Object.assign(iframe.style, {
+              position: "absolute",
+              top: "0",
+              left: "0",
+              width: "100%",
+              height: "100%",
+            });
+            setPlayerReady(true);
+          },
+        },
       });
     };
     if (window.YT?.Player) { create(); return; }
@@ -393,7 +416,7 @@ export default function ScoutPlayer({ athletes }: { athletes: AthleteOption[] })
           <div>
             <p className="text-xs font-semibold uppercase tracking-widest text-blue-400">Scout ao vivo</p>
             <h2 className="mt-0.5 text-base font-semibold text-white">
-              Cole o link do YouTube, carregue e clique nas ações durante o jogo
+              {withVideo ? "Cole o link do YouTube, carregue e clique nas ações durante o jogo" : "Assista pela TV e registre as ações em tempo real"}
             </h2>
           </div>
           <div className="flex gap-3 shrink-0">
@@ -413,6 +436,20 @@ export default function ScoutPlayer({ athletes }: { athletes: AthleteOption[] })
 
         {/* Controls */}
         <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+          {/* Mode toggle */}
+          <div className="flex rounded-2xl bg-zinc-900 p-1 ring-1 ring-white/10 shrink-0">
+            <button type="button"
+              onClick={() => setWithVideo(true)}
+              className={`rounded-xl px-3 py-1.5 text-xs font-medium transition ${withVideo ? "bg-blue-600 text-white" : "text-zinc-400 hover:text-zinc-200"}`}>
+              📺 YouTube
+            </button>
+            <button type="button"
+              onClick={() => { setWithVideo(false); setVideoId(""); setYoutubeUrl(""); }}
+              className={`rounded-xl px-3 py-1.5 text-xs font-medium transition ${!withVideo ? "bg-zinc-700 text-white" : "text-zinc-400 hover:text-zinc-200"}`}>
+              📡 TV / Ao vivo
+            </button>
+          </div>
+
           <select value={selectedAthleteId} onChange={(e) => setSelectedAthleteId(e.target.value)}
             className="rounded-2xl bg-zinc-900 px-3 py-2 text-sm text-white ring-1 ring-white/10 outline-none focus:ring-2 focus:ring-blue-500 transition appearance-none sm:w-52">
             <option value="">Selecionar atleta…</option>
@@ -421,21 +458,25 @@ export default function ScoutPlayer({ athletes }: { athletes: AthleteOption[] })
             ))}
           </select>
 
-          <input value={youtubeUrl} onChange={(e) => setYoutubeUrl(e.target.value)}
-            className="min-w-0 flex-1 rounded-2xl bg-zinc-900 px-4 py-2 text-sm text-white placeholder-zinc-500 ring-1 ring-white/10 outline-none focus:ring-2 focus:ring-blue-500 transition"
-            placeholder="https://www.youtube.com/watch?v=…" />
+          {withVideo && (
+            <>
+              <input value={youtubeUrl} onChange={(e) => setYoutubeUrl(e.target.value)}
+                className="min-w-0 flex-1 rounded-2xl bg-zinc-900 px-4 py-2 text-sm text-white placeholder-zinc-500 ring-1 ring-white/10 outline-none focus:ring-2 focus:ring-blue-500 transition"
+                placeholder="https://www.youtube.com/watch?v=…" />
 
-          <button type="button"
-            className="rounded-2xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-500"
-            onClick={() => { const id = parseYouTubeId(youtubeUrl); if (!id) return alert("Cole um link válido do YouTube."); setVideoId(id); }}>
-            Carregar
-          </button>
+              <button type="button"
+                className="rounded-2xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-500"
+                onClick={() => { const id = parseYouTubeId(youtubeUrl); if (!id) return alert("Cole um link válido do YouTube."); setVideoId(id); }}>
+                Carregar
+              </button>
 
-          <button type="button"
-            className="rounded-2xl bg-white/5 px-4 py-2 text-sm text-zinc-300 ring-1 ring-white/10 transition hover:bg-white/10"
-            onClick={createClip}>
-            Corte (−5/+5)
-          </button>
+              <button type="button"
+                className="rounded-2xl bg-white/5 px-4 py-2 text-sm text-zinc-300 ring-1 ring-white/10 transition hover:bg-white/10"
+                onClick={createClip}>
+                Corte (−5/+5)
+              </button>
+            </>
+          )}
 
           <button type="button"
             className="rounded-2xl bg-white/5 px-4 py-2 text-sm text-zinc-400 ring-1 ring-white/10 transition hover:bg-white/10"
@@ -453,10 +494,19 @@ export default function ScoutPlayer({ athletes }: { athletes: AthleteOption[] })
         {/* Status */}
         <div className="mt-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className={`h-2 w-2 rounded-full ${videoId ? (playerReady ? "bg-emerald-400 animate-pulse" : "bg-amber-400") : "bg-zinc-600"}`} />
-            <span className="text-xs text-zinc-500">
-              {videoId ? (playerReady ? "Player pronto" : "Carregando…") : "Aguardando link"}
-            </span>
+            {withVideo ? (
+              <>
+                <div className={`h-2 w-2 rounded-full ${videoId ? (playerReady ? "bg-emerald-400 animate-pulse" : "bg-amber-400") : "bg-zinc-600"}`} />
+                <span className="text-xs text-zinc-500">
+                  {videoId ? (playerReady ? "Player pronto" : "Carregando…") : "Aguardando link"}
+                </span>
+              </>
+            ) : (
+              <>
+                <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="text-xs text-zinc-500">Modo TV — registre as ações sem vídeo</span>
+              </>
+            )}
           </div>
           {selectedAthlete && (
             <span className="rounded-full bg-blue-500/10 px-3 py-1 text-xs font-medium text-blue-300 ring-1 ring-blue-500/20">
@@ -466,73 +516,75 @@ export default function ScoutPlayer({ athletes }: { athletes: AthleteOption[] })
         </div>
       </div>
 
-      {/* ── Main grid ───────────────────────────────────────────────────── */}
-      <div className="grid gap-4 lg:grid-cols-[1.6fr_1fr]">
-
-        {/* LEFT: video + clips */}
-        <div className="space-y-4">
-          <div className="rounded-3xl bg-white/5 ring-1 ring-white/10 p-4">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-sm font-semibold text-white">Vídeo</p>
-              <p className="text-xs text-zinc-500">Clique num corte para assistir</p>
-            </div>
-
-            <div className="overflow-hidden rounded-2xl ring-1 ring-white/10">
-              <div className="relative aspect-video bg-black">
-                <div id={playerHostId} className="absolute inset-0" />
-                {!videoId && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-zinc-950">
-                    <Youtube className="h-14 w-14 text-zinc-800" />
-                    <p className="text-xs text-zinc-600">Cole o link e clique em Carregar</p>
-                  </div>
-                )}
+      {/* ── Video - full width (YouTube mode only) ───────────────────── */}
+      {withVideo && (
+        <div className="rounded-3xl bg-white/5 ring-1 ring-white/10 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-semibold text-white">Vídeo</p>
+            <p className="text-xs text-zinc-500">Clique num corte para assistir</p>
+          </div>
+          <div
+            className="relative overflow-hidden rounded-2xl bg-black ring-1 ring-white/10"
+            style={{ paddingBottom: "56.25%", height: 0 }}
+          >
+            <div id={playerHostId} className="absolute inset-0" />
+            {!videoId && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-zinc-950">
+                <Youtube className="h-14 w-14 text-zinc-800" />
+                <p className="text-xs text-zinc-600">Cole o link e clique em Carregar</p>
               </div>
-            </div>
-
-            {/* Clips list */}
-            <div className="mt-4">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-sm font-semibold text-white">Cortes marcados</p>
-                <span className="rounded-full bg-white/5 px-2.5 py-0.5 text-xs text-zinc-400 ring-1 ring-white/10">{clips.length}</span>
-              </div>
-              <div className="max-h-52 space-y-2 overflow-y-auto pr-1">
-                {clips.length === 0 ? (
-                  <div className="rounded-2xl bg-white/5 p-4 text-center ring-1 ring-white/5">
-                    <p className="text-xs text-zinc-500">Nenhum corte. Use <span className="text-zinc-300">Corte (−5/+5)</span> enquanto assiste.</p>
-                  </div>
-                ) : (
-                  [...clips].reverse().map((c) => {
-                    const confColor = c.confidence === "alta"
-                      ? "text-emerald-400 bg-emerald-500/10 ring-emerald-500/20"
-                      : c.confidence === "média"
-                      ? "text-amber-400 bg-amber-500/10 ring-amber-500/20"
-                      : "text-zinc-400 bg-white/5 ring-white/10";
-                    return (
-                      <div key={c.id} className={`rounded-2xl p-3 ring-1 transition ${activeClipId === c.id ? "bg-blue-600/15 ring-blue-500/30" : "bg-white/5 ring-white/10 hover:bg-white/8"}`}>
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-center gap-1.5">
-                              <p className="text-sm font-semibold text-white">{c.label}</p>
-                              <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 ${confColor}`}>{c.confidence}</span>
-                            </div>
-                            <p className="mt-0.5 text-xs text-zinc-500">{formatTime(c.start)} → {formatTime(c.end)}</p>
-                            {c.description && <p className="mt-1 text-xs text-zinc-400 line-clamp-2">{c.description}</p>}
-                          </div>
-                          <div className="flex shrink-0 gap-1">
-                            <button type="button" onClick={() => playClip(c)}
-                              className="flex items-center justify-center rounded-xl bg-blue-600 px-2.5 py-1.5 text-white transition hover:bg-blue-500"><Play className="h-3.5 w-3.5" /></button>
-                            <button type="button" onClick={() => removeClip(c.id)}
-                              className="flex items-center justify-center rounded-xl bg-white/5 px-2.5 py-1.5 text-zinc-400 ring-1 ring-white/10 transition hover:bg-red-500/10 hover:text-red-400"><X className="h-3.5 w-3.5" /></button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
+            )}
           </div>
         </div>
+      )}
+
+      {/* ── Bottom grid: clips + actions ────────────────────────────── */}
+      <div className={`grid gap-4 ${withVideo ? "lg:grid-cols-[1fr_1fr]" : ""}`}>
+
+        {/* LEFT: clips (YouTube mode only) */}
+        {withVideo && (
+          <div className="rounded-3xl bg-white/5 ring-1 ring-white/10 p-4">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm font-semibold text-white">Cortes marcados</p>
+              <span className="rounded-full bg-white/5 px-2.5 py-0.5 text-xs text-zinc-400 ring-1 ring-white/10">{clips.length}</span>
+            </div>
+            <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
+              {clips.length === 0 ? (
+                <div className="rounded-2xl bg-white/5 p-4 text-center ring-1 ring-white/5">
+                  <p className="text-xs text-zinc-500">Nenhum corte. Use <span className="text-zinc-300">Corte (−5/+5)</span> enquanto assiste.</p>
+                </div>
+              ) : (
+                [...clips].reverse().map((c) => {
+                  const confColor = c.confidence === "alta"
+                    ? "text-emerald-400 bg-emerald-500/10 ring-emerald-500/20"
+                    : c.confidence === "média"
+                    ? "text-amber-400 bg-amber-500/10 ring-amber-500/20"
+                    : "text-zinc-400 bg-white/5 ring-white/10";
+                  return (
+                    <div key={c.id} className={`rounded-2xl p-3 ring-1 transition ${activeClipId === c.id ? "bg-blue-600/15 ring-blue-500/30" : "bg-white/5 ring-white/10 hover:bg-white/8"}`}>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <p className="text-sm font-semibold text-white">{c.label}</p>
+                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 ${confColor}`}>{c.confidence}</span>
+                          </div>
+                          <p className="mt-0.5 text-xs text-zinc-500">{formatTime(c.start)} → {formatTime(c.end)}</p>
+                          {c.description && <p className="mt-1 text-xs text-zinc-400 line-clamp-2">{c.description}</p>}
+                        </div>
+                        <div className="flex shrink-0 gap-1">
+                          <button type="button" onClick={() => playClip(c)}
+                            className="flex items-center justify-center rounded-xl bg-blue-600 px-2.5 py-1.5 text-white transition hover:bg-blue-500"><Play className="h-3.5 w-3.5" /></button>
+                          <button type="button" onClick={() => removeClip(c.id)}
+                            className="flex items-center justify-center rounded-xl bg-white/5 px-2.5 py-1.5 text-zinc-400 ring-1 ring-white/10 transition hover:bg-red-500/10 hover:text-red-400"><X className="h-3.5 w-3.5" /></button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        )}
 
         {/* RIGHT: actions */}
         <div className="rounded-3xl bg-white/5 ring-1 ring-white/10 p-4 flex flex-col">
