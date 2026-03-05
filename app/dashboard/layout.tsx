@@ -16,7 +16,7 @@ export default function DashboardLayout({
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(59,130,246,0.12),transparent_55%)]" />
       </div>
 
-      <div className="relative mx-auto flex min-h-screen w-full max-w-7xl gap-4 px-3 py-4 sm:px-6 sm:py-6">
+      <div className="relative mx-auto flex min-h-screen w-full max-w-7xl gap-4 px-3 pt-16 pb-4 sm:px-6 sm:py-6">
         <Sidebar />
         <div className="flex min-w-0 flex-1 flex-col gap-4">
           <Topbar />

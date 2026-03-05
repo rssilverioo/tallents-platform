@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import { X, Play } from "lucide-react";
 
 declare global {
   interface Window {
@@ -208,9 +209,7 @@ function EncounterModal({
             onClick={onClose}
             className="flex h-8 w-8 items-center justify-center rounded-xl text-zinc-400 hover:bg-white/5 hover:text-white transition"
           >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <X className="h-4 w-4" />
           </button>
         </div>
 
@@ -255,9 +254,7 @@ function EncounterModal({
               <div className="flex flex-1 items-center justify-center py-16 text-center">
                 <div>
                   <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/5 ring-1 ring-white/10">
-                    <svg className="h-6 w-6 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 010 1.972l-11.54 6.347a1.125 1.125 0 01-1.667-.986V5.653z" />
-                    </svg>
+                    <Play className="h-6 w-6 text-zinc-500" />
                   </div>
                   <p className="text-sm text-zinc-400">Selecione um scout para iniciar</p>
                 </div>
@@ -333,7 +330,7 @@ function EncounterModal({
                                     : "bg-blue-600 text-white hover:bg-blue-500"
                                 }`}
                               >
-                                ▶
+                                <Play className="h-3.5 w-3.5" />
                               </button>
                             </div>
                           </div>

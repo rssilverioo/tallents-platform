@@ -30,6 +30,14 @@ type ScoutCounts = {
   pressaoPosPerda: number;
   aereoGanho: number;
   aereoPerdido: number;
+  passeCampoDefensivo: number;
+  passeCampoOfensivo: number;
+  faltaCometida: number;
+  faltaSofrida: number;
+  impedimento: number;
+  perdaPosse: number;
+  dribleCompleto: number;
+  dribleIncompleto: number;
 };
 
 type Report = {
@@ -125,12 +133,12 @@ export default function PrintReportPage() {
           borderColor: "rgba(59,130,246,0.25)",
           bg: "rgba(59,130,246,0.07)",
           rows: [
-            ["Passe certo ofensivo", counts.passeCertoOfensivo],
+            ["Passe certo", counts.passeCertoOfensivo],
             ["Passe decisivo",       counts.passeDecisivo],
             ["Passe entre linhas",   counts.passeEntreLinhas],
-            ["Passe para trás",      counts.passeParaTras],
-            ["Passe errado",         counts.passeErrado],
-            ["Passe errado (def.)",  counts.passeErradoDefensivo],
+            ["Passe para trás",  counts.passeParaTras],
+            ["Passe errado",     counts.passeErrado],
+            ["Perca da posse",   counts.perdaPosse ?? 0],
           ] as [string, number][],
         },
         {
@@ -142,8 +150,13 @@ export default function PrintReportPage() {
             ["Gol",                 counts.gol],
             ["Assistência",         counts.assistencia],
             ["Finalização no alvo", counts.finalizacaoNoAlvo],
-            ["Finalização fora",    counts.finalizacaoFora],
-            ["Cruzamento",          counts.cruzamento],
+            ["Finalização fora",        counts.finalizacaoFora],
+            ["Cruzamento",              counts.cruzamento],
+            ["Passe campo ofensivo",    counts.passeCampoOfensivo ?? 0],
+            ["Falta sofrida",           counts.faltaSofrida ?? 0],
+            ["Impedimento",             counts.impedimento ?? 0],
+            ["Drible completo",         counts.dribleCompleto ?? 0],
+            ["Drible incompleto",       counts.dribleIncompleto ?? 0],
           ] as [string, number][],
         },
         {
@@ -156,8 +169,10 @@ export default function PrintReportPage() {
             ["Interceptação",        counts.interceptacao],
             ["Recuperação de posse", counts.recuperacaoPosse],
             ["Pressão pós-perda",    counts.pressaoPosPerda],
-            ["Aéreo ganho",          counts.aereoGanho],
-            ["Aéreo perdido",        counts.aereoPerdido],
+            ["Aéreo ganho",           counts.aereoGanho],
+            ["Aéreo perdido",         counts.aereoPerdido],
+            ["Passe campo defensivo", counts.passeCampoDefensivo ?? 0],
+            ["Falta cometida",        counts.faltaCometida ?? 0],
           ] as [string, number][],
         },
       ]

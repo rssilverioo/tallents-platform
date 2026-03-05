@@ -5,12 +5,6 @@ import {
   View,
   StyleSheet,
   Image as PDFImage,
-  Svg,
-  Line,
-  Polygon,
-  Rect,
-  Circle,
-  G,
 } from "@react-pdf/renderer";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -33,6 +27,14 @@ type ScoutCounts = {
   pressaoPosPerda: number;
   aereoGanho: number;
   aereoPerdido: number;
+  passeCampoDefensivo: number;
+  passeCampoOfensivo: number;
+  faltaCometida: number;
+  faltaSofrida: number;
+  impedimento: number;
+  perdaPosse: number;
+  dribleCompleto: number;
+  dribleIncompleto: number;
 };
 
 export type ReportData = {
@@ -40,10 +42,6 @@ export type ReportData = {
   title: string;
   summary: string;
   tags: string[];
-  rating: number;
-  intensity: number;
-  decision: number;
-  positioning: number;
   analystName: string;
   createdAt: string;
   clips: Array<{
@@ -86,19 +84,12 @@ const C = {
   border: "#1e3a5f",
   borderLight: "#1a3050",
   blue: "#60a5fa",
-  blueDeep: "#1d4ed8",
   blueAccent: "#2563eb",
   green: "#34d399",
   violet: "#a78bfa",
   white: "#ffffff",
   muted: "rgba(255,255,255,0.45)",
   faint: "rgba(255,255,255,0.15)",
-  // Radar specific
-  lime: "#bef264",
-  limeFill: "rgba(190,242,100,0.22)",
-  radarBg: "#0d1117",
-  radarGrid: "rgba(255,255,255,0.1)",
-  radarAxis: "rgba(255,255,255,0.07)",
 };
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
@@ -164,9 +155,6 @@ const s = StyleSheet.create({
   avatarInitialText: { fontSize: 22, fontFamily: "Helvetica-Bold", color: C.blue },
   athleteName: { fontSize: 14, fontFamily: "Helvetica-Bold", color: C.white },
   athleteSub: { fontSize: 9, color: C.muted, marginTop: 3 },
-  scoreBlock: { marginLeft: "auto", alignItems: "flex-end" },
-  scoreBig: { fontSize: 28, fontFamily: "Helvetica-Bold", color: C.blue, lineHeight: 1 },
-  scoreLabel: { fontSize: 7, color: C.muted, marginTop: 3, letterSpacing: 1 },
 
   // Tags
   tagsRow: { flexDirection: "row", flexWrap: "wrap", gap: 4, marginBottom: 14 },
@@ -200,28 +188,6 @@ const s = StyleSheet.create({
     marginBottom: 16,
   },
   summaryText: { fontSize: 9, color: "rgba(255,255,255,0.7)", lineHeight: 1.7 },
-
-  // Score grid
-  scoreGrid: { flexDirection: "row", gap: 6, marginBottom: 16 },
-  scoreCell: {
-    flex: 1,
-    backgroundColor: "#0c1e3a",
-    borderWidth: 1,
-    borderColor: C.border,
-    borderRadius: 8,
-    padding: 10,
-    alignItems: "center",
-  },
-  scoreCellVal: { fontSize: 18, fontFamily: "Helvetica-Bold", color: C.blue },
-  scoreCellLbl: { fontSize: 7, color: C.muted, marginTop: 3, letterSpacing: 0.5 },
-
-  // Metric bars
-  metricRow: { marginBottom: 8 },
-  metricHdr: { flexDirection: "row", justifyContent: "space-between", marginBottom: 3 },
-  metricName: { fontSize: 9, color: "rgba(255,255,255,0.6)" },
-  metricVal: { fontSize: 9, fontFamily: "Helvetica-Bold", color: C.blue },
-  metricTrack: { height: 6, backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 999 },
-  metricFill: { height: 6, borderRadius: 999 },
 
   // Counts
   countsGrid: { flexDirection: "row", gap: 6, marginBottom: 16 },
@@ -287,208 +253,7 @@ const s = StyleSheet.create({
     marginTop: "auto",
   },
   footerText: { fontSize: 7, color: "rgba(255,255,255,0.2)" },
-
-  // Radar section wrapper
-  radarSection: { marginBottom: 16, alignItems: "center" },
 });
-
-// ─── Bar helper ───────────────────────────────────────────────────────────────
-
-function MetricBar({ label, value }: { label: string; value: number }) {
-  return (
-    <View style={s.metricRow}>
-      <View style={s.metricHdr}>
-        <Text style={s.metricName}>{label}</Text>
-        <Text style={s.metricVal}>{value}/10</Text>
-      </View>
-      <View style={s.metricTrack}>
-        <View style={[s.metricFill, { width: `${value * 10}%`, backgroundColor: C.blueAccent }]} />
-      </View>
-    </View>
-  );
-}
-
-// ─── Radar chart ─────────────────────────────────────────────────────────────
-
-const RW = 280;          // SVG total width
-const RH = 290;          // SVG total height (radar + score box)
-const RCX = 140;         // radar center X
-const RCY = 110;         // radar center Y
-const MAX_R = 76;        // max radar radius
-const N_AXES = 6;
-
-// angles: 0 = top, going clockwise
-const rAngles = Array.from(
-  { length: N_AXES },
-  (_, i) => (i / N_AXES) * 2 * Math.PI - Math.PI / 2
-);
-
-function radarPt(val: number, idx: number) {
-  const r = (Math.min(Math.max(val, 0), 10) / 10) * MAX_R;
-  return {
-    x: RCX + r * Math.cos(rAngles[idx]),
-    y: RCY + r * Math.sin(rAngles[idx]),
-  };
-}
-
-function hexPts(frac: number) {
-  return rAngles
-    .map((a) => `${(RCX + frac * MAX_R * Math.cos(a)).toFixed(2)},${(RCY + frac * MAX_R * Math.sin(a)).toFixed(2)}`)
-    .join(" ");
-}
-
-function labelAnchor(angle: number): "middle" | "start" | "end" {
-  const cos = Math.cos(angle);
-  if (Math.abs(cos) < 0.25) return "middle";
-  return cos > 0 ? "start" : "end";
-}
-
-function scorePerf(s: number) {
-  if (s >= 8.5) return "EXCELENTE";
-  if (s >= 7) return "BOA ATUAÇÃO";
-  if (s >= 5) return "ATUAÇÃO REGULAR";
-  return "ATUAÇÃO FRACA";
-}
-
-interface RAxis { label: string; value: number }
-
-function getRadarAxes(report: ReportData): RAxis[] {
-  const c = report.counts;
-
-  // derive offensive/defensive scores from counts, fallback to metrics
-  let ofensivo = parseFloat(((report.rating + report.intensity) / 2).toFixed(1));
-  let defensivo = parseFloat(((report.positioning + report.decision) / 2).toFixed(1));
-
-  if (c) {
-    const off = Math.min(10, c.gol * 2 + c.assistencia + c.finalizacaoNoAlvo + c.cruzamento * 0.5);
-    const def = Math.min(10, c.desarme + c.interceptacao + c.recuperacaoPosse + c.pressaoPosPerda * 0.5);
-    if (off > 0) ofensivo = parseFloat(off.toFixed(1));
-    if (def > 0) defensivo = parseFloat(def.toFixed(1));
-  }
-
-  return [
-    { label: "Passes",      value: report.decision    },
-    { label: "Intensidade", value: report.intensity   },
-    { label: "Posic.",      value: report.positioning },
-    { label: "Avaliação",   value: report.rating      },
-    { label: "Defensivo",   value: defensivo          },
-    { label: "Ofensivo",    value: ofensivo           },
-  ];
-}
-
-function RadarChart({ report, score }: { report: ReportData; score: number }) {
-  const axes = getRadarAxes(report);
-  const data = axes.map((ax, i) => radarPt(ax.value, i));
-  const dataPts = data.map((p) => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(" ");
-  const LRAD = MAX_R + 22;
-
-  // Score box dimensions
-  const boxW = 110;
-  const boxH = 48;
-  const boxX = RCX - boxW / 2;
-  const boxY = RH - boxH - 6;
-
-  return (
-    <View style={s.radarSection}>
-      <Text style={s.secLabel}>Radar da Partida</Text>
-      <Svg width={RW} height={RH}>
-        {/* Background */}
-        <Rect x={0} y={0} width={RW} height={RH} fill={C.radarBg} rx={10} ry={10} />
-
-        {/* Grid hexagons */}
-        {[0.25, 0.5, 0.75, 1].map((frac) => (
-          <Polygon
-            key={frac}
-            points={hexPts(frac)}
-            fill="none"
-            stroke={C.radarGrid}
-            strokeWidth={0.5}
-          />
-        ))}
-
-        {/* Axis lines */}
-        {rAngles.map((a, i) => (
-          <Line
-            key={i}
-            x1={RCX}
-            y1={RCY}
-            x2={RCX + MAX_R * Math.cos(a)}
-            y2={RCY + MAX_R * Math.sin(a)}
-            stroke={C.radarAxis}
-            strokeWidth={0.5}
-          />
-        ))}
-
-        {/* Data polygon fill */}
-        <Polygon points={dataPts} fill={C.limeFill} stroke={C.lime} strokeWidth={1.5} />
-
-        {/* Dots on polygon vertices */}
-        {data.map((p, i) => (
-          <Circle key={i} cx={p.x} cy={p.y} r={3} fill={C.lime} />
-        ))}
-
-        {/* Axis labels + values */}
-        {axes.map((ax, i) => {
-          const lx = RCX + LRAD * Math.cos(rAngles[i]);
-          const ly = RCY + LRAD * Math.sin(rAngles[i]);
-          const anchor = labelAnchor(rAngles[i]);
-          return (
-            <G key={i}>
-              <Text
-                x={lx}
-                y={ly - 2}
-                style={{ fontSize: 7, fill: C.white, fontFamily: "Helvetica-Bold", textAnchor: anchor }}
-              >
-                {ax.label}
-              </Text>
-              <Text
-                x={lx}
-                y={ly + 8}
-                style={{ fontSize: 7, fill: C.lime, fontFamily: "Helvetica-Bold", textAnchor: anchor }}
-              >
-                {ax.value.toFixed(1)}
-              </Text>
-            </G>
-          );
-        })}
-
-        {/* Score box */}
-        <Rect
-          x={boxX}
-          y={boxY}
-          width={boxW}
-          height={boxH}
-          fill="#131c2e"
-          stroke="rgba(255,255,255,0.12)"
-          strokeWidth={1}
-          rx={6}
-          ry={6}
-        />
-        <Text
-          x={RCX}
-          y={boxY + 12}
-          style={{ fontSize: 6, fill: "rgba(255,255,255,0.35)", fontFamily: "Helvetica", textAnchor: "middle" }}
-        >
-          ÍNDICE DA PARTIDA
-        </Text>
-        <Text
-          x={RCX}
-          y={boxY + 28}
-          style={{ fontSize: 14, fill: C.white, fontFamily: "Helvetica-Bold", textAnchor: "middle" }}
-        >
-          {score.toFixed(1)}
-        </Text>
-        <Text
-          x={RCX}
-          y={boxY + 41}
-          style={{ fontSize: 6.5, fill: C.lime, fontFamily: "Helvetica-Bold", textAnchor: "middle" }}
-        >
-          {scorePerf(score)}
-        </Text>
-      </Svg>
-    </View>
-  );
-}
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
@@ -496,11 +261,6 @@ export function ReportPDF({ report }: { report: ReportData }) {
   const clips = Array.isArray(report.clips) ? report.clips : [];
   const counts = report.counts as ScoutCounts | null;
   const hasCounts = counts && Object.values(counts).some((v) => v > 0);
-
-  const overallScore =
-    Math.round(
-      ((report.rating + report.intensity + report.decision + report.positioning) / 4) * 10
-    ) / 10;
 
   const countSections = counts
     ? [
@@ -510,12 +270,12 @@ export function ReportPDF({ report }: { report: ReportData }) {
           borderColor: "rgba(59,130,246,0.3)",
           bg: "rgba(59,130,246,0.08)",
           rows: [
-            ["Passe certo ofensivo", counts.passeCertoOfensivo],
-            ["Passe decisivo", counts.passeDecisivo],
+            ["Passe certo",        counts.passeCertoOfensivo],
+            ["Passe decisivo",     counts.passeDecisivo],
             ["Passe entre linhas", counts.passeEntreLinhas],
-            ["Passe para trás", counts.passeParaTras],
-            ["Passe errado", counts.passeErrado],
-            ["Passe errado (def.)", counts.passeErradoDefensivo],
+            ["Passe para trás",    counts.passeParaTras],
+            ["Passe errado",       counts.passeErrado],
+            ["Perca da posse",     counts.perdaPosse ?? 0],
           ] as [string, number][],
         },
         {
@@ -524,11 +284,16 @@ export function ReportPDF({ report }: { report: ReportData }) {
           borderColor: "rgba(16,185,129,0.3)",
           bg: "rgba(16,185,129,0.08)",
           rows: [
-            ["Gol", counts.gol],
-            ["Assistência", counts.assistencia],
-            ["Final. no alvo", counts.finalizacaoNoAlvo],
-            ["Finalização fora", counts.finalizacaoFora],
-            ["Cruzamento", counts.cruzamento],
+            ["Gol",                     counts.gol],
+            ["Assistência",             counts.assistencia],
+            ["Final. no alvo",          counts.finalizacaoNoAlvo],
+            ["Finalização fora",        counts.finalizacaoFora],
+            ["Cruzamento",              counts.cruzamento],
+            ["Passe campo ofensivo",    counts.passeCampoOfensivo ?? 0],
+            ["Falta sofrida",           counts.faltaSofrida ?? 0],
+            ["Impedimento",             counts.impedimento ?? 0],
+            ["Drible completo",         counts.dribleCompleto ?? 0],
+            ["Drible incompleto",       counts.dribleIncompleto ?? 0],
           ] as [string, number][],
         },
         {
@@ -537,12 +302,14 @@ export function ReportPDF({ report }: { report: ReportData }) {
           borderColor: "rgba(139,92,246,0.3)",
           bg: "rgba(139,92,246,0.08)",
           rows: [
-            ["Desarme", counts.desarme],
-            ["Interceptação", counts.interceptacao],
-            ["Rec. de posse", counts.recuperacaoPosse],
-            ["Pressão pós-perda", counts.pressaoPosPerda],
-            ["Aéreo ganho", counts.aereoGanho],
-            ["Aéreo perdido", counts.aereoPerdido],
+            ["Desarme",              counts.desarme],
+            ["Interceptação",        counts.interceptacao],
+            ["Rec. de posse",        counts.recuperacaoPosse],
+            ["Pressão pós-perda",    counts.pressaoPosPerda],
+            ["Aéreo ganho",          counts.aereoGanho],
+            ["Aéreo perdido",        counts.aereoPerdido],
+            ["Passe campo defensivo", counts.passeCampoDefensivo ?? 0],
+            ["Falta cometida",       counts.faltaCometida ?? 0],
           ] as [string, number][],
         },
       ]
@@ -582,10 +349,6 @@ export function ReportPDF({ report }: { report: ReportData }) {
               {report.athlete.team} · {report.athlete.position}
             </Text>
           </View>
-          <View style={s.scoreBlock}>
-            <Text style={s.scoreBig}>{overallScore}</Text>
-            <Text style={s.scoreLabel}>SCORE GERAL</Text>
-          </View>
         </View>
 
         {/* ── Tags ── */}
@@ -603,30 +366,6 @@ export function ReportPDF({ report }: { report: ReportData }) {
         <Text style={s.secLabel}>Resumo</Text>
         <View style={s.summaryBox}>
           <Text style={s.summaryText}>{report.summary}</Text>
-        </View>
-
-        {/* ── Score grid ── */}
-        <Text style={s.secLabel}>Métricas</Text>
-        <View style={s.scoreGrid}>
-          {[
-            { val: report.rating, lbl: "Avaliação" },
-            { val: report.intensity, lbl: "Intensidade" },
-            { val: report.decision, lbl: "Decisão" },
-            { val: report.positioning, lbl: "Posição" },
-          ].map(({ val, lbl }) => (
-            <View key={lbl} style={s.scoreCell}>
-              <Text style={s.scoreCellVal}>{val}</Text>
-              <Text style={s.scoreCellLbl}>{lbl}</Text>
-            </View>
-          ))}
-        </View>
-
-        {/* ── Metric bars ── */}
-        <View style={{ marginBottom: 16 }}>
-          <MetricBar label="Avaliação geral" value={report.rating} />
-          <MetricBar label="Intensidade" value={report.intensity} />
-          <MetricBar label="Tomada de decisão" value={report.decision} />
-          <MetricBar label="Posicionamento" value={report.positioning} />
         </View>
 
         {/* ── Counts ── */}
@@ -693,35 +432,6 @@ export function ReportPDF({ report }: { report: ReportData }) {
         )}
 
         {/* ── Footer ── */}
-        <View style={s.footer}>
-          <Text style={s.footerText}>Tallents Platform — Relatório Confidencial</Text>
-          <Text style={s.footerText}>
-            {report.athlete.name} · {formatDate(report.createdAt)}
-          </Text>
-        </View>
-      </Page>
-
-      {/* ── Página 2: Radar ── */}
-      <Page size="A4" style={s.page}>
-
-        {/* Mini header */}
-        <View style={s.header}>
-          <View style={{ flexDirection: "row" }}>
-            <Text style={s.brandMain}>TALLENTS</Text>
-            <Text style={s.brandSub}> SCOUT</Text>
-          </View>
-          <View style={s.headerRight}>
-            <Text style={s.headerDate}>{report.athlete.name} · {report.athlete.position}</Text>
-            <Text style={s.headerAnalyst}>Análise Gráfica</Text>
-          </View>
-        </View>
-
-        {/* Radar centralizado */}
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-          <RadarChart report={report} score={overallScore} />
-        </View>
-
-        {/* Footer */}
         <View style={s.footer}>
           <Text style={s.footerText}>Tallents Platform — Relatório Confidencial</Text>
           <Text style={s.footerText}>
