@@ -43,12 +43,20 @@ function fmt(t: number) {
 function parseYouTubeId(url: string) {
   try {
     const u = new URL(url.trim());
-    if (u.hostname.includes("youtu.be")) return u.pathname.replace("/", "");
-    if (u.hostname.includes("youtube.com")) return u.searchParams.get("v") ?? "";
+    if (u.hostname.includes("youtu.be")) {
+      return u.pathname.replace(/^\//, "") || "";
+    }
+    if (u.hostname.includes("youtube.com")) {
+      const v = u.searchParams.get("v");
+      if (v) return v;
+      // /live/ID  /shorts/ID  /embed/ID  /v/ID
+      const m = u.pathname.match(/\/(?:live|shorts|embed|v)\/([^/?&#]+)/);
+      if (m) return m[1];
+    }
+    return "";
   } catch {
-    // invalid URL
+    return "";
   }
-  return "";
 }
 
 function formatDate(iso: string) {
@@ -82,6 +90,8 @@ function EncounterModal({
   const activeClipEndRef = useRef<number | null>(null);
   const [playerReady, setPlayerReady] = useState(false);
   const [activeClipId, setActiveClipId] = useState<string | null>(null);
+  const [manualUrl, setManualUrl] = useState("");
+  const [activeVideoId, setActiveVideoId] = useState("");
 
   // Load scouts
   useEffect(() => {
@@ -101,12 +111,19 @@ function EncounterModal({
     document.body.appendChild(tag);
   }, []);
 
-  // Create/recreate player when scout changes
+  // Pre-fill URL when scout is selected
   useEffect(() => {
     if (!selectedScout) return;
+    if (selectedScout.youtubeUrl) {
+      setManualUrl(selectedScout.youtubeUrl);
+    }
+    setActiveClipId(null);
+    activeClipEndRef.current = null;
+  }, [selectedScout]);
 
-    const videoId = parseYouTubeId(selectedScout.youtubeUrl);
-    if (!videoId) return;
+  // Create/recreate player when activeVideoId changes
+  useEffect(() => {
+    if (!activeVideoId) return;
 
     setPlayerReady(false);
     setActiveClipId(null);
@@ -116,9 +133,17 @@ function EncounterModal({
       if (!window.YT?.Player) return;
       try { playerRef.current?.destroy?.(); } catch {}
       playerRef.current = new window.YT.Player(playerHostId, {
-        videoId,
+        videoId: activeVideoId,
+        width: "100%",
+        height: "100%",
         playerVars: { autoplay: 0, controls: 1, modestbranding: 1, rel: 0 },
-        events: { onReady: () => setPlayerReady(true) },
+        events: {
+          onReady: (event: any) => {
+            const iframe = event.target.getIframe();
+            Object.assign(iframe.style, { position: "absolute", top: "0", left: "0", width: "100%", height: "100%" });
+            setPlayerReady(true);
+          },
+        },
       });
     };
 
@@ -132,7 +157,7 @@ function EncounterModal({
       try { playerRef.current?.destroy?.(); } catch {}
       playerRef.current = null;
     };
-  }, [selectedScout]);
+  }, [activeVideoId]);
 
   // Auto-stop at clip end time
   useEffect(() => {
@@ -178,7 +203,11 @@ function EncounterModal({
     }
   }
 
-  const videoId = selectedScout ? parseYouTubeId(selectedScout.youtubeUrl) : "";
+  function loadVideo() {
+    const id = parseYouTubeId(manualUrl);
+    if (!id) return alert("Cole um link válido do YouTube.");
+    setActiveVideoId(id);
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -261,23 +290,43 @@ function EncounterModal({
               </div>
             ) : (
               <div className="p-4 space-y-4">
+                {/* YouTube URL input */}
+                <div className="flex gap-2">
+                  <input
+                    value={manualUrl}
+                    onChange={(e) => setManualUrl(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && loadVideo()}
+                    placeholder="https://www.youtube.com/watch?v=…"
+                    className="min-w-0 flex-1 rounded-2xl bg-zinc-800 px-3.5 py-2 text-sm text-white placeholder-zinc-500 ring-1 ring-white/10 outline-none focus:ring-2 focus:ring-blue-500 transition"
+                  />
+                  <button
+                    type="button"
+                    onClick={loadVideo}
+                    className="shrink-0 rounded-2xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-500"
+                  >
+                    Carregar
+                  </button>
+                </div>
+
                 {/* YouTube player via IFrame API */}
-                <div className="overflow-hidden rounded-2xl ring-1 ring-white/10">
-                  <div className="relative aspect-video bg-zinc-950">
-                    <div id={playerHostId} className="absolute inset-0" />
-                    {!videoId && (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <p className="text-sm text-zinc-500">URL do YouTube inválida</p>
-                      </div>
-                    )}
-                  </div>
+                <div
+                  className="relative overflow-hidden rounded-2xl bg-zinc-950 ring-1 ring-white/10"
+                  style={{ paddingBottom: "56.25%", height: 0 }}
+                >
+                  <div id={playerHostId} className="absolute inset-0" />
+                  {!activeVideoId && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+                      <Play className="h-10 w-10 text-zinc-700" />
+                      <p className="text-sm text-zinc-500">Cole o link e clique em Carregar</p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Player status */}
                 <div className="flex items-center gap-2">
-                  <div className={`h-2 w-2 rounded-full ${videoId ? (playerReady ? "bg-emerald-400 animate-pulse" : "bg-amber-400") : "bg-zinc-600"}`} />
+                  <div className={`h-2 w-2 rounded-full ${activeVideoId ? (playerReady ? "bg-emerald-400 animate-pulse" : "bg-amber-400") : "bg-zinc-600"}`} />
                   <span className="text-xs text-zinc-500">
-                    {!videoId ? "URL inválida" : playerReady ? "Player pronto — clique num lance para assistir" : "Carregando player..."}
+                    {!activeVideoId ? "Aguardando link" : playerReady ? "Player pronto — clique num lance para assistir" : "Carregando player..."}
                   </span>
                 </div>
 

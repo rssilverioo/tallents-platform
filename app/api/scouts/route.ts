@@ -166,9 +166,9 @@ export async function POST(req: Request) {
       clips: ClipInput[];
     };
 
-    if (!athleteId || !youtubeUrl || !counts) {
+    if (!athleteId || !counts) {
       return NextResponse.json(
-        { error: "athleteId, youtubeUrl e counts são obrigatórios" },
+        { error: "athleteId e counts são obrigatórios" },
         { status: 400 }
       );
     }
