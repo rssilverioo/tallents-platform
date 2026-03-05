@@ -138,20 +138,6 @@ function parseYouTubeId(url: string) {
   }
 }
 
-function autoMetrics(counts: ScoutCounts) {
-  const total = Object.values(counts).reduce((a, b) => a + b, 0);
-  const pos = counts.passeCertoOfensivo + counts.passeDecisivo + counts.passeEntreLinhas
-    + counts.assistencia + counts.finalizacaoNoAlvo + counts.gol + counts.cruzamento
-    + counts.desarme + counts.interceptacao + counts.recuperacaoPosse + counts.aereoGanho;
-  const neg = counts.passeErrado + counts.passeErradoDefensivo + counts.finalizacaoFora + counts.aereoPerdido;
-
-  const rating      = total > 0 ? Math.min(10, Math.max(1, Math.round((pos / Math.max(1, pos + neg)) * 10))) : 7;
-  const intensity   = Math.min(10, Math.max(1, Math.round(total / 3)));
-  const decision    = Math.min(10, Math.max(1, Math.round(((counts.passeDecisivo + counts.passeEntreLinhas + counts.assistencia) / Math.max(1, total)) * 40)));
-  const positioning = Math.min(10, Math.max(1, Math.round(((counts.aereoGanho + counts.interceptacao + counts.desarme + counts.recuperacaoPosse) / Math.max(1, total)) * 40)));
-
-  return { rating, intensity, decision, positioning };
-}
 
 function openPrintPdf(counts: ScoutCounts) {
   const sections = [
@@ -174,23 +160,6 @@ ${s.rows.map(([l, v]) => `<tr><td>${l}</td><td>${v}</td></tr>`).join("")}</tbody
   w.document.documentElement.innerHTML = html;
 }
 
-// ── MetricSlider ──────────────────────────────────────────────────────────────
-
-function MetricSlider({ label, value, onChange }: {
-  label: string; value: number; onChange: (v: number) => void;
-}) {
-  return (
-    <div>
-      <div className="mb-1 flex items-center justify-between">
-        <span className="text-xs font-medium text-zinc-400">{label}</span>
-        <span className="text-sm font-bold text-white">{value}<span className="text-zinc-600">/10</span></span>
-      </div>
-      <input type="range" min={0} max={10} step={1} value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        className="w-full accent-blue-500 h-1.5 cursor-pointer" />
-    </div>
-  );
-}
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -216,7 +185,7 @@ export default function ScoutPlayer({ athletes }: { athletes: AthleteOption[] })
 
   const [finalizeOpen, setFinalizeOpen] = useState(false);
   const [finalForm, setFinalForm] = useState({
-    title: "", summary: "", tags: "", rating: 7, intensity: 7, decision: 7, positioning: 7,
+    title: "", summary: "", tags: "",
   });
   const [saving, setSaving]       = useState(false);
   const [saveError, setSaveError] = useState("");
@@ -332,13 +301,10 @@ export default function ScoutPlayer({ athletes }: { athletes: AthleteOption[] })
 
   function openFinalize() {
     if (!selectedAthleteId) return alert("Selecione um atleta antes de finalizar.");
-    const m = autoMetrics(counts);
     const athlete = athletes.find((a) => a.id === selectedAthleteId);
     setFinalForm({
       title: athlete ? `Scout — ${athlete.name} — ${new Date().toLocaleDateString("pt-BR")}` : "",
       summary: "", tags: "",
-      rating: m.rating, intensity: m.intensity,
-      decision: m.decision, positioning: m.positioning,
     });
     setSaveError("");
     setFinalizeOpen(true);
@@ -376,10 +342,6 @@ export default function ScoutPlayer({ athletes }: { athletes: AthleteOption[] })
             title: finalForm.title,
             summary: finalForm.summary,
             tags: finalForm.tags,
-            rating: finalForm.rating,
-            intensity: finalForm.intensity,
-            decision: finalForm.decision,
-            positioning: finalForm.positioning,
             clips: clipPayload,
             counts,
           }),
@@ -703,19 +665,6 @@ export default function ScoutPlayer({ athletes }: { athletes: AthleteOption[] })
                 <input type="text" value={finalForm.tags} placeholder="Ex: Passes, Pressão alta, Aéreo"
                   onChange={(e) => setFinalForm((f) => ({ ...f, tags: e.target.value }))}
                   className="w-full rounded-xl bg-zinc-800 px-3.5 py-2.5 text-sm text-white placeholder-zinc-500 ring-1 ring-white/10 outline-none focus:ring-2 focus:ring-blue-500 transition" />
-              </div>
-
-              <div className="space-y-4 rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-zinc-300">Métricas calculadas automaticamente</p>
-                  <span className="text-[10px] text-zinc-600">Ajuste se necessário</span>
-                </div>
-                {(["rating", "intensity", "decision", "positioning"] as const).map((key) => (
-                  <MetricSlider key={key}
-                    label={{ rating: "Avaliação geral", intensity: "Intensidade", decision: "Tomada de decisão", positioning: "Posicionamento" }[key]}
-                    value={finalForm[key]}
-                    onChange={(v) => setFinalForm((f) => ({ ...f, [key]: v }))} />
-                ))}
               </div>
 
               {saveError && (
