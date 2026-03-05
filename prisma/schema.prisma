@@ -47,6 +47,7 @@ model Athlete {
   athleteSessions AthleteSession[]
   analystReports  AnalystReport[]
   agendaEvents    AgendaEvent[]
+  metas           Meta[]
 }
 
 model AthleteSession {
@@ -137,6 +138,23 @@ model AnalystReport {
 
   @@index([athleteId])
   @@index([analystId])
+}
+
+model Meta {
+  id          String   @id @default(cuid())
+  title       String
+  season      String
+  description String   @default("")
+  analystName String
+  goals       Json     @default("[]")
+
+  athleteId   String
+  athlete     Athlete  @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([athleteId])
 }
 
 model Report {

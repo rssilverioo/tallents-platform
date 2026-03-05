@@ -21,6 +21,9 @@ export async function GET(req: Request) {
           analystReports: {
             orderBy: { createdAt: "desc" },
           },
+          metas: {
+            orderBy: { createdAt: "desc" },
+          },
         },
       },
     },

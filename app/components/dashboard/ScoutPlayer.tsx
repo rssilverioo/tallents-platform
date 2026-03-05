@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Youtube, X, User, Play } from "lucide-react";
 import ScoutModal, { ScoutModalValue } from "./ScoutModal";
 
 declare global {
@@ -38,6 +39,14 @@ type ScoutCounts = {
   pressaoPosPerda: number;
   aereoGanho: number;
   aereoPerdido: number;
+  passeCampoDefensivo: number;
+  passeCampoOfensivo: number;
+  faltaCometida: number;
+  faltaSofrida: number;
+  impedimento: number;
+  perdaPosse: number;
+  dribleCompleto: number;
+  dribleIncompleto: number;
 };
 
 type Clip = {
@@ -60,32 +69,42 @@ const DEFAULT_COUNTS: ScoutCounts = {
   cruzamento: 0, assistencia: 0, finalizacaoNoAlvo: 0,
   finalizacaoFora: 0, gol: 0, desarme: 0, interceptacao: 0,
   recuperacaoPosse: 0, pressaoPosPerda: 0, aereoGanho: 0, aereoPerdido: 0,
+  passeCampoDefensivo: 0, passeCampoOfensivo: 0,
+  faltaCometida: 0, faltaSofrida: 0, impedimento: 0,
+  perdaPosse: 0, dribleCompleto: 0, dribleIncompleto: 0,
 };
 
 const PASS_ACTIONS: ActionItem[] = [
-  { key: "passeCertoOfensivo",   label: "Passe certo ofensivo" },
-  { key: "passeDecisivo",        label: "Passe decisivo" },
-  { key: "passeEntreLinhas",     label: "Passe entre linhas" },
-  { key: "passeParaTras",        label: "Passe para trás" },
-  { key: "passeErrado",          label: "Passe errado" },
-  { key: "passeErradoDefensivo", label: "Passe errado (def.)" },
+  { key: "passeCertoOfensivo", label: "Passe certo" },
+  { key: "passeDecisivo",      label: "Passe decisivo" },
+  { key: "passeEntreLinhas",   label: "Passe entre linhas" },
+  { key: "passeParaTras",      label: "Passe para trás" },
+  { key: "passeErrado",        label: "Passe errado" },
+  { key: "perdaPosse",         label: "Perca da posse" },
 ];
 
 const OFF_ACTIONS: ActionItem[] = [
-  { key: "gol",               label: "Gol" },
-  { key: "assistencia",       label: "Assistência" },
-  { key: "finalizacaoNoAlvo", label: "Finalização no alvo" },
-  { key: "finalizacaoFora",   label: "Finalização fora" },
-  { key: "cruzamento",        label: "Cruzamento" },
+  { key: "gol",                label: "Gol" },
+  { key: "assistencia",        label: "Assistência" },
+  { key: "finalizacaoNoAlvo",  label: "Finalização no alvo" },
+  { key: "finalizacaoFora",    label: "Finalização fora" },
+  { key: "cruzamento",         label: "Cruzamento" },
+  { key: "passeCampoOfensivo", label: "Passe no campo ofensivo" },
+  { key: "faltaSofrida",       label: "Falta sofrida" },
+  { key: "impedimento",        label: "Impedimento" },
+  { key: "dribleCompleto",     label: "Drible completo" },
+  { key: "dribleIncompleto",   label: "Drible incompleto" },
 ];
 
 const DEF_ACTIONS: ActionItem[] = [
-  { key: "desarme",          label: "Desarme" },
-  { key: "interceptacao",    label: "Interceptação" },
-  { key: "recuperacaoPosse", label: "Recuperação de posse" },
-  { key: "pressaoPosPerda",  label: "Pressão pós-perda" },
-  { key: "aereoGanho",       label: "Aéreo ganho" },
-  { key: "aereoPerdido",     label: "Aéreo perdido" },
+  { key: "desarme",             label: "Desarme" },
+  { key: "interceptacao",       label: "Interceptação" },
+  { key: "recuperacaoPosse",    label: "Recuperação de posse" },
+  { key: "pressaoPosPerda",     label: "Pressão pós-perda" },
+  { key: "aereoGanho",          label: "Aéreo ganho" },
+  { key: "aereoPerdido",        label: "Aéreo perdido" },
+  { key: "passeCampoDefensivo", label: "Passe no campo defensivo" },
+  { key: "faltaCometida",       label: "Falta cometida" },
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -463,9 +482,7 @@ export default function ScoutPlayer({ athletes }: { athletes: AthleteOption[] })
                 <div id={playerHostId} className="absolute inset-0" />
                 {!videoId && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-zinc-950">
-                    <svg className="h-14 w-14 text-zinc-800" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M21.582 6.186a2.506 2.506 0 00-1.768-1.768C18.254 4 12 4 12 4s-6.254 0-7.814.418a2.506 2.506 0 00-1.768 1.768C2 7.746 2 12 2 12s0 4.254.418 5.814a2.506 2.506 0 001.768 1.768C5.746 20 12 20 12 20s6.254 0 7.814-.418a2.506 2.506 0 001.768-1.768C22 16.254 22 12 22 12s0-4.254-.418-5.814zM10 15.5v-7l6 3.5-6 3.5z"/>
-                    </svg>
+                    <Youtube className="h-14 w-14 text-zinc-800" />
                     <p className="text-xs text-zinc-600">Cole o link e clique em Carregar</p>
                   </div>
                 )}
@@ -503,9 +520,9 @@ export default function ScoutPlayer({ athletes }: { athletes: AthleteOption[] })
                           </div>
                           <div className="flex shrink-0 gap-1">
                             <button type="button" onClick={() => playClip(c)}
-                              className="rounded-xl bg-blue-600 px-2.5 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-500">▶</button>
+                              className="flex items-center justify-center rounded-xl bg-blue-600 px-2.5 py-1.5 text-white transition hover:bg-blue-500"><Play className="h-3.5 w-3.5" /></button>
                             <button type="button" onClick={() => removeClip(c.id)}
-                              className="rounded-xl bg-white/5 px-2.5 py-1.5 text-xs text-zinc-400 ring-1 ring-white/10 transition hover:bg-red-500/10 hover:text-red-400">✕</button>
+                              className="flex items-center justify-center rounded-xl bg-white/5 px-2.5 py-1.5 text-zinc-400 ring-1 ring-white/10 transition hover:bg-red-500/10 hover:text-red-400"><X className="h-3.5 w-3.5" /></button>
                           </div>
                         </div>
                       </div>
@@ -584,9 +601,7 @@ export default function ScoutPlayer({ athletes }: { athletes: AthleteOption[] })
               </div>
               <button onClick={() => setFinalizeOpen(false)}
                 className="flex h-8 w-8 items-center justify-center rounded-xl text-zinc-400 transition hover:bg-white/5 hover:text-white">
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <X className="h-4 w-4" />
               </button>
             </div>
 
@@ -610,9 +625,7 @@ export default function ScoutPlayer({ athletes }: { athletes: AthleteOption[] })
               {/* Athlete chip */}
               {selectedAthlete && (
                 <div className="flex items-center gap-2 rounded-xl bg-blue-500/10 px-4 py-2.5 ring-1 ring-blue-500/20">
-                  <svg className="h-4 w-4 shrink-0 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0" />
-                  </svg>
+                  <User className="h-4 w-4 shrink-0 text-blue-400" />
                   <span className="text-sm font-medium text-blue-300">{selectedAthlete.name}</span>
                   <span className="text-xs text-blue-400/60">{selectedAthlete.position} · {selectedAthlete.team}</span>
                 </div>

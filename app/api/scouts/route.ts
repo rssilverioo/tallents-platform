@@ -19,6 +19,14 @@ type ScoutCounts = {
   pressaoPosPerda: number;
   aereoGanho: number;
   aereoPerdido: number;
+  passeCampoDefensivo: number;
+  passeCampoOfensivo: number;
+  faltaCometida: number;
+  faltaSofrida: number;
+  impedimento: number;
+  perdaPosse: number;
+  dribleCompleto: number;
+  dribleIncompleto: number;
 };
 
 type ClipInput = {
