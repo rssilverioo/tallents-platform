@@ -5,7 +5,7 @@ import Image from "next/image";
 import {
   Plus, ChevronDown, Download, X, FileText,
   Film, BarChart2, AlignLeft, Clock, Scissors,
-  Zap, Shield, TrendingUp,
+  Zap, Shield, TrendingUp, Trash2,
 } from "lucide-react";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -185,9 +185,21 @@ function ClipItem({ clip, index }: { clip: Clip; index: number }) {
 
 type CardTab = "resumo" | "graficos" | "cortes";
 
-function ReportCard({ report }: { report: Report }) {
+function ReportCard({ report, onDelete }: { report: Report; onDelete: (id: string) => void }) {
   const [expanded, setExpanded] = useState(false);
   const [tab, setTab] = useState<CardTab>("resumo");
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDelete() {
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/analyst-reports/${report.id}`, { method: "DELETE" });
+      if (res.ok) onDelete(report.id);
+    } catch {}
+    setDeleting(false);
+    setConfirmDelete(false);
+  }
   const hasPhoto = Boolean(report.athlete.photo);
   const c = report.counts ?? {};
 
@@ -296,8 +308,46 @@ function ReportCard({ report }: { report: Report }) {
             <Download className="h-3.5 w-3.5" />
             PDF
           </a>
+          <button
+            onClick={() => setConfirmDelete(true)}
+            title="Excluir relatório"
+            className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/5 text-zinc-500 ring-1 ring-white/8 transition hover:bg-red-500/15 hover:text-red-400"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
         </div>
       </div>
+
+      {/* Delete confirm */}
+      {confirmDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setConfirmDelete(false)} />
+          <div className="relative w-full max-w-sm rounded-3xl bg-zinc-900 ring-1 ring-white/10 shadow-2xl p-6">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-500/15 ring-1 ring-red-500/20 mx-auto mb-4">
+              <Trash2 className="h-6 w-6 text-red-400" />
+            </div>
+            <h3 className="text-center font-semibold text-white mb-1">Excluir relatório?</h3>
+            <p className="text-center text-sm text-zinc-400 mb-6">
+              Esta ação é irreversível. O relatório de <span className="font-medium text-white">{report.athlete.name}</span> será removido permanentemente.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmDelete(false)}
+                className="flex-1 rounded-xl bg-white/5 py-2.5 text-sm font-medium text-zinc-300 ring-1 ring-white/10 transition hover:bg-white/10"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="flex-1 rounded-xl bg-red-600 py-2.5 text-sm font-semibold text-white transition hover:bg-red-500 disabled:opacity-50"
+              >
+                {deleting ? "Excluindo..." : "Excluir"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Expanded panel */}
       {expanded && (
@@ -586,7 +636,13 @@ export default function ReportsPage() {
         </div>
       ) : (
         <div className="grid gap-4 xl:grid-cols-2">
-          {reports.map((r) => <ReportCard key={r.id} report={r} />)}
+          {reports.map((r) => (
+            <ReportCard
+              key={r.id}
+              report={r}
+              onDelete={(id) => setReports((prev) => prev.filter((x) => x.id !== id))}
+            />
+          ))}
         </div>
       )}
 

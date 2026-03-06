@@ -299,7 +299,7 @@ function ReportCard({ report, index }: { report: AnalystReport; index: number })
 
 const CATEGORY_COLORS: Record<string, { text: string; bg: string; ring: string }> = {
   "Técnico":     { text: "text-blue-400",    bg: "bg-blue-500/10",    ring: "ring-blue-500/20"    },
-  "Físico":      { text: "text-emerald-400", bg: "bg-emerald-500/10", ring: "ring-emerald-500/20" },
+  "Físico":      { text: "text-cyan-400",    bg: "bg-cyan-500/10",    ring: "ring-cyan-500/20"    },
   "Tático":      { text: "text-violet-400",  bg: "bg-violet-500/10",  ring: "ring-violet-500/20"  },
   "Mental":      { text: "text-amber-400",   bg: "bg-amber-500/10",   ring: "ring-amber-500/20"   },
   "Estatístico": { text: "text-orange-400",  bg: "bg-orange-500/10",  ring: "ring-orange-500/20"  },
@@ -315,15 +315,15 @@ function pct(current: number, target: number) {
 }
 
 function progressBarColor(p: number) {
-  if (p >= 100) return "bg-emerald-500";
-  if (p >= 70)  return "bg-blue-500";
+  if (p >= 100) return "bg-blue-500";
+  if (p >= 70)  return "bg-blue-400";
   if (p >= 40)  return "bg-amber-500";
   return "bg-red-500";
 }
 
 function progressTextColor(p: number) {
-  if (p >= 100) return "text-emerald-400";
-  if (p >= 70)  return "text-blue-400";
+  if (p >= 100) return "text-blue-400";
+  if (p >= 70)  return "text-blue-300";
   if (p >= 40)  return "text-amber-400";
   return "text-red-400";
 }
@@ -355,7 +355,7 @@ function MetaCard({ meta }: { meta: Meta }) {
               <p className="text-[10px] text-zinc-600 uppercase tracking-wider">progresso</p>
             </div>
             <div className="text-center">
-              <p className="text-xl font-bold text-emerald-400">{completed}</p>
+              <p className="text-xl font-bold text-blue-400">{completed}</p>
               <p className="text-[10px] text-zinc-600 uppercase tracking-wider">metas batidas</p>
             </div>
           </div>
@@ -451,7 +451,7 @@ export default function AtletaPage() {
     return (
       <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <div className="h-8 w-8 rounded-full border-2 border-emerald-500 border-t-transparent animate-spin" />
+          <div className="h-8 w-8 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
           <p className="text-sm text-zinc-400">Carregando sua área...</p>
         </div>
       </div>
@@ -471,16 +471,16 @@ export default function AtletaPage() {
       ? "text-blue-400 bg-blue-500/10 ring-blue-500/20"
       : athlete.position === "Goleiro"
       ? "text-amber-400 bg-amber-500/10 ring-amber-500/20"
-      : "text-emerald-400 bg-emerald-500/10 ring-emerald-500/20";
+      : "text-blue-400 bg-blue-500/10 ring-blue-500/20";
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
       {/* Background */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
-        <div className="absolute -top-60 left-1/2 h-125 w-125 -translate-x-1/2 rounded-full bg-emerald-500/8 blur-3xl" />
+        <div className="absolute -top-60 left-1/2 h-125 w-125 -translate-x-1/2 rounded-full bg-blue-500/8 blur-3xl" />
         <div className="absolute top-1/3 -right-32 h-64 w-64 rounded-full bg-blue-600/8 blur-3xl" />
         <div className="absolute bottom-0 left-0 h-48 w-96 rounded-full bg-violet-500/6 blur-3xl" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(16,185,129,0.06),transparent_55%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(59,130,246,0.06),transparent_55%)]" />
       </div>
 
       <div className="relative flex min-h-screen">
@@ -522,9 +522,9 @@ export default function AtletaPage() {
               </div>
             </div>
 
-            <div className="mt-3 flex items-center gap-2 rounded-xl bg-emerald-500/10 px-3 py-2 ring-1 ring-emerald-500/20">
-              <div className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-xs font-medium text-emerald-300">
+            <div className="mt-3 flex items-center gap-2 rounded-xl bg-blue-500/10 px-3 py-2 ring-1 ring-blue-500/20">
+              <div className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse" />
+              <span className="text-xs font-medium text-blue-300">
                 {athlete.remainingMeetings} reuniões disponíveis
               </span>
             </div>
@@ -547,7 +547,7 @@ export default function AtletaPage() {
                       : "text-zinc-400 hover:bg-white/5 hover:text-zinc-200"
                   }`}
                 >
-                  <span className={`transition-colors ${isActive ? "text-emerald-400" : "text-zinc-500 group-hover:text-zinc-300"}`}>
+                  <span className={`transition-colors ${isActive ? "text-blue-400" : "text-zinc-500 group-hover:text-zinc-300"}`}>
                     {item.icon}
                   </span>
                   {item.label}
@@ -562,7 +562,7 @@ export default function AtletaPage() {
                     </span>
                   )}
                   {item.id === "metas" && athlete.metas.length > 0 && (
-                    <span className="ml-auto rounded-full bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-bold text-emerald-300">
+                    <span className="ml-auto rounded-full bg-blue-500/20 px-1.5 py-0.5 text-[10px] font-bold text-blue-300">
                       {athlete.metas.length}
                     </span>
                   )}
@@ -675,7 +675,7 @@ export default function AtletaPage() {
                       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                         {[
                           { label: "Scouts",       value: scouts.length,   color: "text-blue-400",    icon: <FileText className="h-4 w-4" /> },
-                          { label: "Ações totais", value: totalActions,    color: "text-emerald-400", icon: <TrendingUp className="h-4 w-4" /> },
+                          { label: "Ações totais", value: totalActions,    color: "text-blue-300",    icon: <TrendingUp className="h-4 w-4" /> },
                           { label: "Relatórios",   value: reports.length,  color: "text-violet-400",  icon: <Trophy className="h-4 w-4" /> },
                           { label: "Metas",        value: athlete.metas.length, color: "text-amber-400", icon: <Target className="h-4 w-4" /> },
                         ].map((kpi) => (
@@ -872,8 +872,8 @@ export default function AtletaPage() {
                     <p className="mt-0.5 text-xs text-zinc-500">Relatórios</p>
                   </div>
                   <div className="rounded-2xl bg-white/5 p-5 ring-1 ring-white/10 text-center">
-                    <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 ring-1 ring-emerald-500/20">
-                      <Target className="h-5 w-5 text-emerald-400" />
+                    <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 ring-1 ring-blue-500/20">
+                      <Target className="h-5 w-5 text-blue-400" />
                     </div>
                     <p className="text-3xl font-bold text-white">{athlete.metas.length}</p>
                     <p className="mt-0.5 text-xs text-zinc-500">Fichas de metas</p>
