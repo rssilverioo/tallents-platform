@@ -27,3 +27,17 @@ export async function GET(
     return NextResponse.json({ error: "Erro ao buscar relatório" }, { status: 500 });
   }
 }
+
+export async function DELETE(
+  _req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    await prisma.analystReport.delete({ where: { id } });
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error("DELETE /api/analyst-reports/[id] error:", err);
+    return NextResponse.json({ error: "Erro ao excluir relatório" }, { status: 500 });
+  }
+}
