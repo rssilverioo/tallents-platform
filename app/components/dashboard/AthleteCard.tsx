@@ -1,10 +1,11 @@
 import type { Athlete } from "./types";
-import { Pencil, Trash2, CalendarDays } from "lucide-react";
+import { Pencil, Trash2, CalendarDays, ExternalLink } from "lucide-react";
 
 interface AthleteCardProps {
   athlete: Athlete;
   onEdit?: (athlete: Athlete) => void;
   onDelete?: (id: string) => void;
+  onViewProfile?: () => void;
 }
 
 const POSITION_COLORS: Record<string, { accent: string; bg: string; text: string; ring: string; dot: string }> = {
@@ -25,7 +26,7 @@ function getMeetingStyle(n: number) {
   return       { color: "text-blue-300",  label: "restantes", badge: "bg-blue-500/10 text-blue-300 ring-blue-500/20" };
 }
 
-export default function AthleteCard({ athlete, onEdit, onDelete }: AthleteCardProps) {
+export default function AthleteCard({ athlete, onEdit, onDelete, onViewProfile }: AthleteCardProps) {
   const hasPhoto = Boolean(athlete.photo);
   const pos = POSITION_COLORS[athlete.position] ?? DEFAULT_POS;
   const meeting = getMeetingStyle(athlete.remainingMeetings);
@@ -36,9 +37,18 @@ export default function AthleteCard({ athlete, onEdit, onDelete }: AthleteCardPr
       {/* Gradient accent top strip */}
       <div className={`absolute inset-x-0 top-0 h-24 bg-linear-to-b ${pos.accent} to-transparent pointer-events-none`} />
 
-      {/* Action buttons — appear on hover */}
-      {(onEdit || onDelete) && (
+      {/* Action buttons */}
+      {(onEdit || onDelete || onViewProfile) && (
         <div className="absolute right-3 top-3 z-10 flex gap-1">
+          {onViewProfile && (
+            <button
+              onClick={onViewProfile}
+              title="Ver perfil completo"
+              className="flex h-7 w-7 items-center justify-center rounded-xl bg-zinc-800/90 text-zinc-400 ring-1 ring-white/10 backdrop-blur transition hover:bg-white/15 hover:text-white"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+            </button>
+          )}
           {onEdit && (
             <button
               onClick={() => onEdit(athlete)}
@@ -65,8 +75,6 @@ export default function AthleteCard({ athlete, onEdit, onDelete }: AthleteCardPr
 
         {/* Top row: avatar + name */}
         <div className="flex items-start gap-3">
-
-          {/* Avatar */}
           <div className={`relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl ring-2 ${pos.ring} bg-zinc-800`}>
             {hasPhoto ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -79,9 +87,15 @@ export default function AthleteCard({ athlete, onEdit, onDelete }: AthleteCardPr
             <span className={`absolute bottom-0.5 right-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-zinc-900 ${pos.dot}`} />
           </div>
 
-          {/* Name + team */}
-          <div className="flex-1 pt-0.5 pr-8">
-            <p className="text-[15px] font-semibold text-white leading-snug">{athlete.name}</p>
+          {/* Name + team — clickable for profile */}
+          <div className="flex-1 pt-0.5 pr-20 min-w-0">
+            <button
+              onClick={onViewProfile}
+              className="text-left block w-full"
+              title="Ver perfil"
+            >
+              <p className="text-[15px] font-semibold text-white leading-snug hover:text-blue-300 transition truncate">{athlete.name}</p>
+            </button>
             <p className="mt-0.5 text-xs text-zinc-500 font-medium">{athlete.team}</p>
           </div>
         </div>
@@ -92,12 +106,17 @@ export default function AthleteCard({ athlete, onEdit, onDelete }: AthleteCardPr
             <span className={`h-1.5 w-1.5 rounded-full ${pos.dot}`} />
             {athlete.position}
           </span>
+          {athlete.planType && (
+            <span className="ml-2 inline-flex items-center rounded-full bg-zinc-800 px-2.5 py-1 text-xs font-medium text-zinc-400 ring-1 ring-white/10">
+              {athlete.planType}
+            </span>
+          )}
         </div>
 
         {/* Spacer */}
         <div className="flex-1" />
 
-        {/* Bottom: divider + meetings */}
+        {/* Bottom: meetings */}
         <div className="mt-4 flex items-center justify-between border-t border-white/5 pt-4">
           <div className="flex items-center gap-1.5">
             <CalendarDays className="h-3.5 w-3.5 text-zinc-600" />

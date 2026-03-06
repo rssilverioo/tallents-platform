@@ -56,6 +56,10 @@ export async function POST(req: Request) {
       ? 0
       : Number(remainingMeetingsRaw);
 
+  const planType = body.planType ? String(body.planType).trim() : null;
+  const planStartDateRaw = body.planStartDate ? String(body.planStartDate).trim() : null;
+  const planEndDateRaw = body.planEndDate ? String(body.planEndDate).trim() : null;
+
   if (!name) return badRequest("name é obrigatório");
   if (!team) return badRequest("team é obrigatório");
   if (!position) return badRequest("position é obrigatório");
@@ -68,6 +72,9 @@ export async function POST(req: Request) {
     return badRequest("birthDate inválido");
   }
 
+  const planStartDate = planStartDateRaw ? new Date(planStartDateRaw) : null;
+  const planEndDate = planEndDateRaw ? new Date(planEndDateRaw) : null;
+
   try {
     const athlete = await prisma.athlete.create({
       data: {
@@ -77,6 +84,9 @@ export async function POST(req: Request) {
         remainingMeetings: Math.floor(remainingMeetings),
         photo,
         ...(birthDate ? { birthDate } : {}),
+        ...(planType ? { planType } : {}),
+        ...(planStartDate ? { planStartDate } : {}),
+        ...(planEndDate ? { planEndDate } : {}),
       },
     });
 
