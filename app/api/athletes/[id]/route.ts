@@ -6,13 +6,22 @@ function badRequest(msg: string) {
 }
 
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  const { searchParams } = new URL(req.url);
+  const full = searchParams.get("full") === "true";
 
   const athlete = await prisma.athlete.findUnique({
     where: { id },
+    include: full
+      ? {
+          analystReports: { orderBy: { createdAt: "desc" } },
+          metas: { orderBy: { createdAt: "desc" } },
+          scouts: { include: { report: true }, orderBy: { createdAt: "desc" } },
+        }
+      : undefined,
   });
 
   if (!athlete) {
@@ -36,6 +45,10 @@ export async function PATCH(
   if (body.team !== undefined) data.team = String(body.team).trim();
   if (body.position !== undefined) data.position = String(body.position).trim();
   if (body.photo !== undefined) data.photo = body.photo ? String(body.photo).trim() : null;
+  if (body.planType !== undefined) data.planType = body.planType || null;
+  if (body.planStartDate !== undefined) data.planStartDate = body.planStartDate ? new Date(body.planStartDate) : null;
+  if (body.planEndDate !== undefined) data.planEndDate = body.planEndDate ? new Date(body.planEndDate) : null;
+  if (body.birthDate !== undefined) data.birthDate = body.birthDate ? new Date(body.birthDate) : null;
 
   if (body.remainingMeetings !== undefined) {
     const rm = Number(body.remainingMeetings);

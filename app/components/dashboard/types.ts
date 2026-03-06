@@ -6,6 +6,9 @@ export type Athlete = {
   remainingMeetings: number;
   photo: string;
   birthDate?: string | null;
+  planType?: string | null;
+  planStartDate?: string | null;
+  planEndDate?: string | null;
 };
 
 export type AthleteReport = {

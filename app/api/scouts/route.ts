@@ -186,7 +186,7 @@ export async function POST(req: Request) {
     const scout = await prisma.scout.create({
       data: {
         athleteId,
-        youtubeUrl,
+        youtubeUrl: youtubeUrl ?? "",
         counts: counts as any,
         clips: {
           create: (clips || []).map((c) => ({

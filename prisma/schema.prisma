@@ -40,6 +40,9 @@ model Athlete {
   remainingMeetings Int             @default(0)
   photo             String          @default("")
   birthDate         DateTime?
+  planType          String?
+  planStartDate     DateTime?
+  planEndDate       DateTime?
   createdAt         DateTime        @default(now())
 
   reports        Report[]

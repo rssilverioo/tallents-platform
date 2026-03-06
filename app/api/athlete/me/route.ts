@@ -24,6 +24,10 @@ export async function GET(req: Request) {
           metas: {
             orderBy: { createdAt: "desc" },
           },
+          scouts: {
+            include: { report: true },
+            orderBy: { createdAt: "desc" },
+          },
         },
       },
     },

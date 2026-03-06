@@ -29,12 +29,60 @@ type ScoutClip = {
   confidence: string;
 };
 
+type ScoutCounts = Record<string, number>;
+
 type Scout = {
   id: string;
   youtubeUrl: string;
   createdAt: string;
   clips: ScoutClip[];
+  counts: ScoutCounts | null;
 };
+
+const COUNT_SECTIONS = [
+  {
+    label: "Passes",
+    color: "#60a5fa",
+    keys: [
+      ["Passe certo",        "passeCertoOfensivo"],
+      ["Passe decisivo",     "passeDecisivo"],
+      ["Passe entre linhas", "passeEntreLinhas"],
+      ["Passe para trás",    "passeParaTras"],
+      ["Passe errado",       "passeErrado"],
+      ["Perca da posse",     "perdaPosse"],
+    ],
+  },
+  {
+    label: "Ofensivo",
+    color: "#34d399",
+    keys: [
+      ["Gol",                   "gol"],
+      ["Assistência",           "assistencia"],
+      ["Final. no alvo",        "finalizacaoNoAlvo"],
+      ["Finalização fora",      "finalizacaoFora"],
+      ["Cruzamento",            "cruzamento"],
+      ["Campo ofensivo",        "passeCampoOfensivo"],
+      ["Falta sofrida",         "faltaSofrida"],
+      ["Impedimento",           "impedimento"],
+      ["Drible completo",       "dribleCompleto"],
+      ["Drible incompleto",     "dribleIncompleto"],
+    ],
+  },
+  {
+    label: "Defensivo",
+    color: "#a78bfa",
+    keys: [
+      ["Desarme",              "desarme"],
+      ["Interceptação",        "interceptacao"],
+      ["Rec. de posse",        "recuperacaoPosse"],
+      ["Pressão pós-perda",    "pressaoPosPerda"],
+      ["Aéreo ganho",          "aereoGanho"],
+      ["Aéreo perdido",        "aereoPerdido"],
+      ["Campo defensivo",      "passeCampoDefensivo"],
+      ["Falta cometida",       "faltaCometida"],
+    ],
+  },
+] as const;
 
 function fmt(t: number) {
   return `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
@@ -392,6 +440,90 @@ function EncounterModal({
                 {selectedScout.clips.length === 0 && (
                   <p className="text-sm text-zinc-500">Nenhum lance cortado neste scout.</p>
                 )}
+
+                {/* ── Ações registradas ── */}
+                {selectedScout.counts && (() => {
+                  const c = selectedScout.counts as ScoutCounts;
+                  const totalActions = Object.values(c).reduce((a, b) => a + (b ?? 0), 0);
+                  if (totalActions === 0) return null;
+
+                  // Build flat list of all actions with value > 0 for the chart
+                  const chartRows: { label: string; value: number; color: string }[] = [];
+                  for (const sec of COUNT_SECTIONS) {
+                    for (const [label, key] of sec.keys) {
+                      const val = c[key] ?? 0;
+                      if (val > 0) chartRows.push({ label, value: val, color: sec.color });
+                    }
+                  }
+                  const maxVal = Math.max(...chartRows.map((r) => r.value), 1);
+
+                  return (
+                    <div className="space-y-4">
+                      {/* Summary chips */}
+                      <div>
+                        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                          Ações registradas ({totalActions} total)
+                        </p>
+                        <div className="grid grid-cols-3 gap-2">
+                          {COUNT_SECTIONS.map((sec) => {
+                            const total = sec.keys.reduce((s, [, k]) => s + (c[k] ?? 0), 0);
+                            return (
+                              <div key={sec.label} className="rounded-2xl bg-white/5 p-3 ring-1 ring-white/10 text-center">
+                                <p className="text-[10px] uppercase tracking-wider" style={{ color: sec.color }}>{sec.label}</p>
+                                <p className="text-2xl font-bold text-white mt-0.5">{total}</p>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Detailed table per section */}
+                      <div className="grid gap-3 sm:grid-cols-3">
+                        {COUNT_SECTIONS.map((sec) => {
+                          const rows = sec.keys.filter(([, k]) => (c[k] ?? 0) > 0);
+                          if (rows.length === 0) return null;
+                          return (
+                            <div key={sec.label} className="rounded-2xl bg-white/5 p-3 ring-1 ring-white/10">
+                              <p className="mb-2 text-[10px] font-bold uppercase tracking-wider" style={{ color: sec.color }}>{sec.label}</p>
+                              <div className="space-y-1">
+                                {rows.map(([label, key]) => (
+                                  <div key={key} className="flex items-center justify-between gap-2">
+                                    <span className="text-xs text-zinc-400 truncate">{label}</span>
+                                    <span className="text-sm font-bold tabular-nums" style={{ color: sec.color }}>{c[key] ?? 0}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Bar chart */}
+                      {chartRows.length > 0 && (
+                        <div>
+                          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-400">Gráfico das ações</p>
+                          <div className="space-y-2">
+                            {chartRows.map((row) => (
+                              <div key={row.label} className="flex items-center gap-3">
+                                <span className="w-32 shrink-0 truncate text-right text-xs text-zinc-400">{row.label}</span>
+                                <div className="flex-1 overflow-hidden rounded-full bg-white/5 h-5">
+                                  <div
+                                    className="h-full rounded-full transition-all duration-500"
+                                    style={{
+                                      width: `${Math.round((row.value / maxVal) * 100)}%`,
+                                      backgroundColor: row.color,
+                                    }}
+                                  />
+                                </div>
+                                <span className="w-6 shrink-0 text-xs font-bold tabular-nums text-white">{row.value}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             )}
           </div>

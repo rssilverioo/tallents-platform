@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Plus, X, Download, Pencil, Trash2, BarChart2, AlertTriangle, SlidersHorizontal } from "lucide-react";
+import { Plus, X, Download, Pencil, Trash2, BarChart2, AlertTriangle, SlidersHorizontal, RefreshCw } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -12,6 +12,8 @@ type GoalItem = {
   target: number;
   current: number;
   unit: string;
+  goalType?: "manual" | "quantidade" | "media" | "porcentagem";
+  scoutKey?: string;
 };
 
 type AthleteOption = {
@@ -103,6 +105,86 @@ function progressTextClass(p: number) {
   return "text-red-400";
 }
 
+const GOAL_TYPES = [
+  { value: "manual",       label: "Manual" },
+  { value: "quantidade",   label: "Por quantidade" },
+  { value: "media",        label: "Por média" },
+  { value: "porcentagem",  label: "Por porcentagem" },
+] as const;
+
+const SCOUT_KEYS: Array<{ key: string; label: string; group: string }> = [
+  { key: "gol",               label: "Gols",                group: "Ofensivo"  },
+  { key: "assistencia",       label: "Assistências",        group: "Ofensivo"  },
+  { key: "finalizacaoNoAlvo", label: "Final. no alvo",      group: "Ofensivo"  },
+  { key: "finalizacaoFora",   label: "Finalização fora",    group: "Ofensivo"  },
+  { key: "cruzamento",        label: "Cruzamentos",         group: "Ofensivo"  },
+  { key: "dribleCompleto",    label: "Dribles completos",   group: "Ofensivo"  },
+  { key: "dribleIncompleto",  label: "Dribles incompletos", group: "Ofensivo"  },
+  { key: "passeCertoOfensivo",label: "Passes certos",       group: "Passes"    },
+  { key: "passeDecisivo",     label: "Passes decisivos",    group: "Passes"    },
+  { key: "passeEntreLinhas",  label: "Passes entre linhas", group: "Passes"    },
+  { key: "passeParaTras",     label: "Passes para trás",    group: "Passes"    },
+  { key: "passeErrado",       label: "Passes errados",      group: "Passes"    },
+  { key: "perdaPosse",        label: "Perda de posse",      group: "Passes"    },
+  { key: "desarme",           label: "Desarmes",            group: "Defensivo" },
+  { key: "interceptacao",     label: "Interceptações",      group: "Defensivo" },
+  { key: "recuperacaoPosse",  label: "Rec. de posse",       group: "Defensivo" },
+  { key: "pressaoPosPerda",   label: "Pressão pós-perda",   group: "Defensivo" },
+  { key: "aereoGanho",        label: "Aéreos ganhos",       group: "Defensivo" },
+  { key: "aereoPerdido",      label: "Aéreos perdidos",     group: "Defensivo" },
+  { key: "faltaCometida",     label: "Faltas cometidas",    group: "Defensivo" },
+  { key: "faltaSofrida",      label: "Faltas sofridas",     group: "Ofensivo"  },
+  { key: "impedimento",       label: "Impedimentos",        group: "Ofensivo"  },
+];
+
+// Percentage pairs: key → (numerator keys, denominator keys)
+const PCT_PAIRS: Record<string, { num: string[]; den: string[] }> = {
+  "passeCertoOfensivo": {
+    num: ["passeCertoOfensivo", "passeDecisivo", "passeEntreLinhas", "passeParaTras"],
+    den: ["passeCertoOfensivo", "passeDecisivo", "passeEntreLinhas", "passeParaTras", "passeErrado", "perdaPosse"],
+  },
+  "dribleCompleto": {
+    num: ["dribleCompleto"],
+    den: ["dribleCompleto", "dribleIncompleto"],
+  },
+  "aereoGanho": {
+    num: ["aereoGanho"],
+    den: ["aereoGanho", "aereoPerdido"],
+  },
+  "finalizacaoNoAlvo": {
+    num: ["finalizacaoNoAlvo"],
+    den: ["finalizacaoNoAlvo", "finalizacaoFora"],
+  },
+};
+
+function calcCurrentFromScouts(
+  scouts: Array<{ counts: Record<string, number> }>,
+  goalType: GoalItem["goalType"],
+  scoutKey: string
+): number {
+  if (!scoutKey || !goalType || goalType === "manual") return 0;
+  if (goalType === "quantidade") {
+    return scouts.reduce((s, sc) => s + ((sc.counts?.[scoutKey] ?? 0) as number), 0);
+  }
+  if (goalType === "media") {
+    const vals = scouts.map((sc) => (sc.counts?.[scoutKey] ?? 0) as number).filter((v) => v > 0);
+    if (vals.length === 0) return 0;
+    return Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 10) / 10;
+  }
+  if (goalType === "porcentagem") {
+    const pair = PCT_PAIRS[scoutKey];
+    if (!pair) {
+      // fallback: just percentage of matches where key > 0
+      const withKey = scouts.filter((sc) => (sc.counts?.[scoutKey] ?? 0) > 0).length;
+      return scouts.length > 0 ? Math.round((withKey / scouts.length) * 100) : 0;
+    }
+    const totalNum = scouts.reduce((s, sc) => s + pair.num.reduce((n, k) => n + ((sc.counts?.[k] ?? 0) as number), 0), 0);
+    const totalDen = scouts.reduce((s, sc) => s + pair.den.reduce((n, k) => n + ((sc.counts?.[k] ?? 0) as number), 0), 0);
+    return totalDen > 0 ? Math.round((totalNum / totalDen) * 100) : 0;
+  }
+  return 0;
+}
+
 function uid() {
   return Math.random().toString(36).slice(2, 10);
 }
@@ -140,9 +222,12 @@ function GoalFormRow({
 }) {
   const cc = catStyle(goal.category);
 
+  const goalType = goal.goalType ?? "manual";
+  const isAuto = goalType !== "manual";
+
   return (
     <div className="rounded-2xl bg-zinc-800/50 p-3 ring-1 ring-white/8">
-      <div className="mb-2 flex items-center gap-2">
+      <div className="mb-2 flex items-center gap-2 flex-wrap">
         <span className="text-xs text-zinc-500 font-medium">#{index + 1}</span>
         <select
           value={goal.category}
@@ -153,6 +238,16 @@ function GoalFormRow({
             <option key={c} value={c} className="bg-zinc-900 text-white">{c}</option>
           ))}
         </select>
+        {/* Goal type selector */}
+        <select
+          value={goalType}
+          onChange={(e) => onChange({ ...goal, goalType: e.target.value as GoalItem["goalType"] })}
+          className="rounded-xl bg-zinc-700 px-2 py-1 text-xs font-medium text-zinc-300 ring-1 ring-white/10 outline-none focus:ring-blue-500/40 cursor-pointer"
+        >
+          {GOAL_TYPES.map((t) => (
+            <option key={t.value} value={t.value} className="bg-zinc-900">{t.label}</option>
+          ))}
+        </select>
         <button
           type="button"
           onClick={onRemove}
@@ -161,6 +256,27 @@ function GoalFormRow({
           <X className="h-3.5 w-3.5" />
         </button>
       </div>
+
+      {/* Scout key selector for auto types */}
+      {isAuto && (
+        <div className="mb-2">
+          <select
+            value={goal.scoutKey ?? ""}
+            onChange={(e) => onChange({ ...goal, scoutKey: e.target.value })}
+            className="w-full rounded-xl bg-zinc-700 px-3 py-2 text-xs text-zinc-200 ring-1 ring-white/10 outline-none focus:ring-blue-500/40"
+          >
+            <option value="">Selecione a ação do scout...</option>
+            {["Ofensivo", "Passes", "Defensivo"].map((group) => (
+              <optgroup key={group} label={group}>
+                {SCOUT_KEYS.filter((sk) => sk.group === group).map((sk) => (
+                  <option key={sk.key} value={sk.key}>{sk.label}</option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <input
           className="col-span-2 rounded-xl bg-white/5 px-3 py-2 text-sm text-white placeholder-zinc-600 ring-1 ring-white/8 outline-none focus:ring-blue-500/40"
@@ -183,6 +299,11 @@ function GoalFormRow({
           onChange={(e) => onChange({ ...goal, unit: e.target.value })}
         />
       </div>
+      {isAuto && (
+        <p className="mt-1.5 text-[10px] text-zinc-600">
+          O valor atual será calculado automaticamente a partir dos scouts ao clicar em &quot;Recalcular&quot;.
+        </p>
+      )}
     </div>
   );
 }
@@ -240,6 +361,11 @@ function ExpandedGoals({ meta, onProgress, onRefresh }: { meta: Meta; onProgress
               <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${cc.bg} ${cc.text} ${cc.ring}`}>
                 {goal.category}
               </span>
+              {goal.goalType && goal.goalType !== "manual" && (
+                <span className="rounded-full bg-violet-500/10 px-2 py-0.5 text-[10px] font-semibold text-violet-300 ring-1 ring-violet-500/20">
+                  {GOAL_TYPES.find((t) => t.value === goal.goalType)?.label}
+                </span>
+              )}
               <span className="text-xs font-medium text-white flex-1">{goal.name}</span>
               <span className={`text-xs font-bold tabular-nums ${progressTextClass(p)}`}>{p}%</span>
             </div>
@@ -302,7 +428,30 @@ function MetaCard({
   onRefresh: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [recalculating, setRecalculating] = useState(false);
   const goals = Array.isArray(meta.goals) ? meta.goals : [];
+  const hasAutoGoals = goals.some((g) => g.goalType && g.goalType !== "manual" && g.scoutKey);
+
+  async function handleRecalculate() {
+    if (!hasAutoGoals) return;
+    setRecalculating(true);
+    try {
+      const res = await fetch(`/api/scouts?athleteId=${meta.athlete.id}`);
+      const data = await res.json();
+      const scouts: Array<{ counts: Record<string, number> }> = data.scouts ?? [];
+      const updated = goals.map((g) => {
+        if (!g.goalType || g.goalType === "manual" || !g.scoutKey) return g;
+        return { ...g, current: calcCurrentFromScouts(scouts, g.goalType, g.scoutKey) };
+      });
+      await fetch(`/api/metas/${meta.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ goals: updated }),
+      });
+      onRefresh();
+    } catch {}
+    setRecalculating(false);
+  }
   const avgProgress = goals.length
     ? Math.round(goals.reduce((s, g) => s + pct(g.current, g.target), 0) / goals.length)
     : 0;
@@ -372,6 +521,17 @@ function MetaCard({
           >
             {expanded ? "Recolher" : "Ver objetivos"}
           </button>
+          {hasAutoGoals && (
+            <button
+              onClick={handleRecalculate}
+              disabled={recalculating}
+              title="Recalcular metas automáticas de scouts"
+              className="flex items-center gap-1.5 rounded-xl bg-violet-500/10 px-3 py-1.5 text-xs font-semibold text-violet-400 ring-1 ring-violet-500/20 transition hover:bg-violet-500/20 disabled:opacity-50"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${recalculating ? "animate-spin" : ""}`} />
+              {recalculating ? "Calculando..." : "Recalcular"}
+            </button>
+          )}
           <button
             onClick={() => onProgress(meta)}
             title="Atualizar progresso"

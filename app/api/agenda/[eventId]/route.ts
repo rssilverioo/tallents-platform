@@ -71,6 +71,23 @@ export async function PUT(
       include: { athlete: { select: { id: true, name: true } } },
     });
 
+    // Auto-decrement remainingMeetings when event is marked as completed for the first time
+    if (
+      body.completed === true &&
+      !event.completed &&
+      updated.athleteId
+    ) {
+      await prisma.athlete.update({
+        where: { id: updated.athleteId },
+        data: { remainingMeetings: { decrement: 1 } },
+      });
+      // Ensure it doesn't go below 0
+      await prisma.athlete.updateMany({
+        where: { id: updated.athleteId, remainingMeetings: { lt: 0 } },
+        data: { remainingMeetings: 0 },
+      });
+    }
+
     return NextResponse.json({ event: updated });
   } catch (err) {
     console.error("[PUT /api/agenda/[eventId]]", err);
