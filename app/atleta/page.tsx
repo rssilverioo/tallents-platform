@@ -15,9 +15,21 @@ import {
   TrendingUp,
   Shield,
   LayoutDashboard,
+  ExternalLink,
+  Play,
+  Scissors,
+  X,
 } from "lucide-react";
 
 type ScoutCounts = Record<string, number>;
+
+type ReportClip = {
+  start: number;
+  end: number;
+  label: string;
+  description: string;
+  confidence: string;
+};
 
 type AnalystReport = {
   id: string;
@@ -27,6 +39,8 @@ type AnalystReport = {
   analystName: string;
   createdAt: string;
   counts: ScoutCounts | null;
+  youtubeUrl?: string;
+  clips?: ReportClip[];
 };
 
 const COUNT_SECTIONS = [
@@ -103,6 +117,7 @@ type ScoutReport = {
 type Scout = {
   id: string;
   createdAt: string;
+  youtubeUrl: string;
   counts: ScoutCounts;
   report: ScoutReport | null;
 };
@@ -168,8 +183,87 @@ function PieChart({ data, size = 100 }: { data: Array<{ label: string; value: nu
   );
 }
 
-function ReportCard({ report, index }: { report: AnalystReport; index: number }) {
+function getYouTubeId(url: string): string | null {
+  if (!url) return null;
+  try {
+    const u = new URL(url.trim());
+    if (u.hostname.includes("youtu.be")) {
+      return u.pathname.replace(/^\//, "").split("?")[0] || null;
+    }
+    if (u.hostname.includes("youtube.com")) {
+      const v = u.searchParams.get("v");
+      if (v) return v;
+      const m = u.pathname.match(/\/(?:live|shorts|embed|v)\/([^/?&#]+)/);
+      if (m) return m[1];
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function YouTubeModal({ videoId, startTime, title, onClose }: {
+  videoId: string;
+  startTime: number;
+  title: string;
+  onClose: () => void;
+}) {
+  const src = `https://www.youtube.com/embed/${videoId}?start=${Math.floor(startTime)}&autoplay=1&rel=0`;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-4xl rounded-3xl bg-zinc-900 ring-1 ring-white/10 shadow-2xl overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">
+          <div className="flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-red-500/15 ring-1 ring-red-500/20">
+              <svg className="h-4 w-4 text-red-400" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+              </svg>
+            </div>
+            <p className="font-semibold text-white text-sm truncate max-w-sm">{title}</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="flex h-8 w-8 items-center justify-center rounded-xl text-zinc-400 transition hover:bg-white/5 hover:text-white"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        {/* Player */}
+        <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
+          <iframe
+            className="absolute inset-0 h-full w-full"
+            src={src}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ReportCard({ report, index, scouts }: { report: AnalystReport; index: number; scouts: Scout[] }) {
   const [expanded, setExpanded] = useState(false);
+  const [videoModal, setVideoModal] = useState<{ startTime: number } | null>(null);
+
+  // Find the YouTube URL: use report's own, or fall back to the closest scout by timestamp
+  const resolvedUrl = (() => {
+    if (report.youtubeUrl) return report.youtubeUrl;
+    const reportTime = new Date(report.createdAt).getTime();
+    let best = "";
+    let minDiff = Infinity;
+    for (const s of scouts) {
+      if (!s.youtubeUrl) continue;
+      const diff = Math.abs(new Date(s.createdAt).getTime() - reportTime);
+      if (diff < minDiff) { minDiff = diff; best = s.youtubeUrl; }
+    }
+    return best;
+  })();
+
+  const videoId = getYouTubeId(resolvedUrl);
+
   const date = new Date(report.createdAt).toLocaleDateString("pt-BR", {
     day: "2-digit",
     month: "short",
@@ -177,6 +271,17 @@ function ReportCard({ report, index }: { report: AnalystReport; index: number })
   });
 
   return (
+    <>
+    {/* YouTube Modal */}
+    {videoModal && videoId && (
+      <YouTubeModal
+        videoId={videoId}
+        startTime={videoModal.startTime}
+        title={report.title}
+        onClose={() => setVideoModal(null)}
+      />
+    )}
+
     <div
       className="group rounded-2xl bg-white/5 ring-1 ring-white/10 transition hover:bg-white/[0.07] hover:ring-white/20"
       style={{ animationDelay: `${index * 80}ms` }}
@@ -215,6 +320,68 @@ function ReportCard({ report, index }: { report: AnalystReport; index: number })
       {expanded && (
         <div className="border-t border-white/5 px-5 pb-5 pt-4 space-y-5">
           <p className="text-sm text-zinc-300 leading-relaxed">{report.summary}</p>
+
+          {/* Assistir vídeo */}
+          {videoId && (
+            <button
+              onClick={() => setVideoModal({ startTime: 0 })}
+              className="flex w-full items-center gap-2.5 rounded-2xl bg-red-500/10 px-4 py-3 ring-1 ring-red-500/20 transition hover:bg-red-500/18 text-left"
+            >
+              <svg className="h-5 w-5 shrink-0 text-red-400" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+              </svg>
+              <span className="text-sm font-medium text-red-300 flex-1">Assistir vídeo completo</span>
+              <Play className="h-3.5 w-3.5 text-red-400" />
+            </button>
+          )}
+
+          {/* Cortes */}
+          {report.clips && report.clips.length > 0 && (
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500 flex items-center gap-1.5">
+                <Scissors className="h-3.5 w-3.5" />
+                Cortes ({report.clips.length})
+              </p>
+              <div className="space-y-2">
+                {report.clips.map((clip, idx) => {
+                  const confColor =
+                    clip.confidence === "alta"
+                      ? "text-blue-400 bg-blue-500/10 ring-blue-500/20"
+                      : clip.confidence === "média"
+                      ? "text-amber-400 bg-amber-500/10 ring-amber-500/20"
+                      : "text-zinc-400 bg-white/5 ring-white/10";
+                  const fmt = (t: number) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
+                  return (
+                    <div key={idx} className="rounded-2xl bg-white/5 p-3 ring-1 ring-white/10">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-sm font-semibold text-white">{clip.label}</p>
+                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 ${confColor}`}>
+                              {clip.confidence}
+                            </span>
+                          </div>
+                          <p className="mt-0.5 text-xs text-zinc-500">{fmt(clip.start)} → {fmt(clip.end)}</p>
+                          {clip.description && (
+                            <p className="mt-1 text-xs text-zinc-400 leading-relaxed">{clip.description}</p>
+                          )}
+                        </div>
+                        {videoId && (
+                          <button
+                            onClick={() => setVideoModal({ startTime: clip.start })}
+                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-red-500/10 text-red-400 ring-1 ring-red-500/20 transition hover:bg-red-500/20"
+                            title={`Assistir a partir de ${fmt(clip.start)}`}
+                          >
+                            <Play className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {report.counts && (() => {
             const c = report.counts as ScoutCounts;
@@ -294,6 +461,7 @@ function ReportCard({ report, index }: { report: AnalystReport; index: number })
         </div>
       )}
     </div>
+    </>
   );
 }
 
@@ -460,6 +628,7 @@ export default function AtletaPage() {
 
   if (!athlete) return null;
 
+  // API already enriches reports with youtubeUrl from closest scout
   const reports = athlete.analystReports;
 
   const positionBadgeColor =
@@ -786,7 +955,7 @@ export default function AtletaPage() {
                 {reports.length > 0 ? (
                   <div className="space-y-3">
                     {reports.map((report, i) => (
-                      <ReportCard key={report.id} report={report} index={i} />
+                      <ReportCard key={report.id} report={report} index={i} scouts={athlete.scouts} />
                     ))}
                   </div>
                 ) : (

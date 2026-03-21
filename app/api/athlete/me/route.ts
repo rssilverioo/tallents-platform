@@ -39,5 +39,18 @@ export async function GET(req: Request) {
 
   const { athlete } = session;
 
-  return NextResponse.json({ athlete });
+  // Enrich analystReports that lack youtubeUrl using the closest scout by timestamp
+  const enrichedReports = athlete.analystReports.map((report) => {
+    if (report.youtubeUrl) return report;
+    const reportTime = report.createdAt.getTime();
+    let closestUrl = "";
+    let minDiff = Infinity;
+    for (const scout of athlete.scouts) {
+      const diff = Math.abs(scout.createdAt.getTime() - reportTime);
+      if (diff < minDiff) { minDiff = diff; closestUrl = scout.youtubeUrl; }
+    }
+    return { ...report, youtubeUrl: closestUrl };
+  });
+
+  return NextResponse.json({ athlete: { ...athlete, analystReports: enrichedReports } });
 }

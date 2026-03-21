@@ -63,6 +63,7 @@ export async function POST(req: Request) {
   const clips = Array.isArray(clipsRaw) ? clipsRaw : [];
 
   const counts = body.counts && typeof body.counts === "object" ? body.counts : {};
+  const youtubeUrl = String(body.youtubeUrl || "").trim();
 
   if (!athleteId) return NextResponse.json({ error: "athleteId obrigatório" }, { status: 400 });
   if (!title) return NextResponse.json({ error: "title obrigatório" }, { status: 400 });
@@ -84,6 +85,7 @@ export async function POST(req: Request) {
         positioning,
         clips,
         counts,
+        youtubeUrl,
         analystName: analyst?.username ?? "Analista",
         analystId: analyst?.id ?? null,
       },
