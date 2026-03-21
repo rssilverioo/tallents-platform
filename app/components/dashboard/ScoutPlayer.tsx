@@ -169,7 +169,9 @@ export default function ScoutPlayer({ athletes }: { athletes: AthleteOption[] })
   const playerHostId = "tallents-yt-player";
   const activeClipEndRef = useRef<number | null>(null);
 
-  const [withVideo, setWithVideo]   = useState(true);
+  type Mode = "youtube" | "tv" | "aulatatics";
+  const [mode, setMode] = useState<Mode>("youtube");
+  const withVideo = mode === "youtube";
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [videoId, setVideoId]       = useState("");
   const [playerReady, setPlayerReady] = useState(false);
@@ -177,6 +179,7 @@ export default function ScoutPlayer({ athletes }: { athletes: AthleteOption[] })
   const [selectedAthleteId, setSelectedAthleteId] = useState("");
   const [counts, setCounts] = useState<ScoutCounts>(DEFAULT_COUNTS);
   const [clips, setClips]   = useState<Clip[]>([]);
+  const [aulaNotes, setAulaNotes] = useState("");
 
   const [pendingRange, setPendingRange]   = useState<{ start: number; end: number } | null>(null);
   const [clipModalOpen, setClipModalOpen] = useState(false);
@@ -302,9 +305,11 @@ export default function ScoutPlayer({ athletes }: { athletes: AthleteOption[] })
   function openFinalize() {
     if (!selectedAthleteId) return alert("Selecione um atleta antes de finalizar.");
     const athlete = athletes.find((a) => a.id === selectedAthleteId);
+    const prefix = mode === "aulatatics" ? "Aula Tática" : "Scout";
     setFinalForm({
-      title: athlete ? `Scout — ${athlete.name} — ${new Date().toLocaleDateString("pt-BR")}` : "",
-      summary: "", tags: "",
+      title: athlete ? `${prefix} — ${athlete.name} — ${new Date().toLocaleDateString("pt-BR")}` : "",
+      summary: mode === "aulatatics" ? aulaNotes : "",
+      tags: mode === "aulatatics" ? "aula-tatica" : "",
     });
     setSaveError("");
     setFinalizeOpen(true);
@@ -323,6 +328,10 @@ export default function ScoutPlayer({ athletes }: { athletes: AthleteOption[] })
         confidence: c.confidence,
       }));
 
+      const isAula = mode === "aulatatics";
+      const saveCounts = isAula ? DEFAULT_COUNTS : counts;
+      const saveClips = isAula ? [] : clipPayload;
+
       const [scoutRes, reportRes] = await Promise.all([
         fetch("/api/scouts", {
           method: "POST",
@@ -330,8 +339,8 @@ export default function ScoutPlayer({ athletes }: { athletes: AthleteOption[] })
           body: JSON.stringify({
             athleteId: selectedAthleteId,
             youtubeUrl,
-            counts,
-            clips: clipPayload,
+            counts: saveCounts,
+            clips: saveClips,
           }),
         }),
         fetch("/api/analyst-reports", {
@@ -342,8 +351,9 @@ export default function ScoutPlayer({ athletes }: { athletes: AthleteOption[] })
             title: finalForm.title,
             summary: finalForm.summary,
             tags: finalForm.tags,
-            clips: clipPayload,
-            counts,
+            clips: saveClips,
+            counts: saveCounts,
+            youtubeUrl,
           }),
         }),
       ]);
@@ -357,6 +367,7 @@ export default function ScoutPlayer({ athletes }: { athletes: AthleteOption[] })
       }
 
       setFinalizeOpen(false);
+      setAulaNotes("");
       router.push("/dashboard/reports");
     } catch {
       setSaveError("Erro ao conectar com o servidor.");
@@ -378,22 +389,26 @@ export default function ScoutPlayer({ athletes }: { athletes: AthleteOption[] })
           <div>
             <p className="text-xs font-semibold uppercase tracking-widest text-blue-400">Scout ao vivo</p>
             <h2 className="mt-0.5 text-base font-semibold text-white">
-              {withVideo ? "Cole o link do YouTube, carregue e clique nas ações durante o jogo" : "Assista pela TV e registre as ações em tempo real"}
+              {mode === "youtube" ? "Cole o link do YouTube, carregue e clique nas ações durante o jogo"
+                : mode === "tv" ? "Assista pela TV e registre as ações em tempo real"
+                : "Descreva o que foi visto na aula tática"}
             </h2>
           </div>
-          <div className="flex gap-3 shrink-0">
-            {[
-              { label: "Ações",   value: stats.totalActions, color: "text-blue-300"    },
-              { label: "Cortes",  value: stats.totalClips,   color: "text-violet-300"  },
-              { label: "Gols",    value: stats.goals,        color: "text-emerald-300" },
-              { label: "Assist.", value: stats.assists,      color: "text-amber-300"   },
-            ].map(({ label, value, color }) => (
-              <div key={label} className="rounded-2xl bg-white/5 px-3 py-2 text-center ring-1 ring-white/10 min-w-13">
-                <p className="text-[10px] text-zinc-500">{label}</p>
-                <p className={`text-lg font-bold ${color}`}>{value}</p>
-              </div>
-            ))}
-          </div>
+          {mode !== "aulatatics" && (
+            <div className="flex gap-3 shrink-0">
+              {[
+                { label: "Ações",   value: stats.totalActions, color: "text-blue-300"    },
+                { label: "Cortes",  value: stats.totalClips,   color: "text-violet-300"  },
+                { label: "Gols",    value: stats.goals,        color: "text-blue-300"    },
+                { label: "Assist.", value: stats.assists,      color: "text-amber-300"   },
+              ].map(({ label, value, color }) => (
+                <div key={label} className="rounded-2xl bg-white/5 px-3 py-2 text-center ring-1 ring-white/10 min-w-13">
+                  <p className="text-[10px] text-zinc-500">{label}</p>
+                  <p className={`text-lg font-bold ${color}`}>{value}</p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Controls */}
@@ -401,14 +416,19 @@ export default function ScoutPlayer({ athletes }: { athletes: AthleteOption[] })
           {/* Mode toggle */}
           <div className="flex rounded-2xl bg-zinc-900 p-1 ring-1 ring-white/10 shrink-0">
             <button type="button"
-              onClick={() => setWithVideo(true)}
-              className={`rounded-xl px-3 py-1.5 text-xs font-medium transition ${withVideo ? "bg-blue-600 text-white" : "text-zinc-400 hover:text-zinc-200"}`}>
+              onClick={() => setMode("youtube")}
+              className={`rounded-xl px-3 py-1.5 text-xs font-medium transition ${mode === "youtube" ? "bg-blue-600 text-white" : "text-zinc-400 hover:text-zinc-200"}`}>
               📺 YouTube
             </button>
             <button type="button"
-              onClick={() => { setWithVideo(false); setVideoId(""); setYoutubeUrl(""); }}
-              className={`rounded-xl px-3 py-1.5 text-xs font-medium transition ${!withVideo ? "bg-zinc-700 text-white" : "text-zinc-400 hover:text-zinc-200"}`}>
+              onClick={() => { setMode("tv"); setVideoId(""); setYoutubeUrl(""); }}
+              className={`rounded-xl px-3 py-1.5 text-xs font-medium transition ${mode === "tv" ? "bg-zinc-700 text-white" : "text-zinc-400 hover:text-zinc-200"}`}>
               📡 TV / Ao vivo
+            </button>
+            <button type="button"
+              onClick={() => setMode("aulatatics")}
+              className={`rounded-xl px-3 py-1.5 text-xs font-medium transition ${mode === "aulatatics" ? "bg-violet-600 text-white" : "text-zinc-400 hover:text-zinc-200"}`}>
+              📚 Aula Tática
             </button>
           </div>
 
@@ -420,7 +440,7 @@ export default function ScoutPlayer({ athletes }: { athletes: AthleteOption[] })
             ))}
           </select>
 
-          {withVideo && (
+          {(withVideo || mode === "aulatatics") && (
             <>
               <input value={youtubeUrl} onChange={(e) => setYoutubeUrl(e.target.value)}
                 className="min-w-0 flex-1 rounded-2xl bg-zinc-900 px-4 py-2 text-sm text-white placeholder-zinc-500 ring-1 ring-white/10 outline-none focus:ring-2 focus:ring-blue-500 transition"
@@ -432,11 +452,13 @@ export default function ScoutPlayer({ athletes }: { athletes: AthleteOption[] })
                 Carregar
               </button>
 
-              <button type="button"
-                className="rounded-2xl bg-white/5 px-4 py-2 text-sm text-zinc-300 ring-1 ring-white/10 transition hover:bg-white/10"
-                onClick={createClip}>
-                Corte (−5/+5)
-              </button>
+              {withVideo && (
+                <button type="button"
+                  className="rounded-2xl bg-white/5 px-4 py-2 text-sm text-zinc-300 ring-1 ring-white/10 transition hover:bg-white/10"
+                  onClick={createClip}>
+                  Corte (−5/+5)
+                </button>
+              )}
             </>
           )}
 
@@ -456,17 +478,22 @@ export default function ScoutPlayer({ athletes }: { athletes: AthleteOption[] })
         {/* Status */}
         <div className="mt-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            {withVideo ? (
+            {mode === "youtube" ? (
               <>
-                <div className={`h-2 w-2 rounded-full ${videoId ? (playerReady ? "bg-emerald-400 animate-pulse" : "bg-amber-400") : "bg-zinc-600"}`} />
+                <div className={`h-2 w-2 rounded-full ${videoId ? (playerReady ? "bg-blue-400 animate-pulse" : "bg-amber-400") : "bg-zinc-600"}`} />
                 <span className="text-xs text-zinc-500">
                   {videoId ? (playerReady ? "Player pronto" : "Carregando…") : "Aguardando link"}
                 </span>
               </>
+            ) : mode === "tv" ? (
+              <>
+                <div className="h-2 w-2 rounded-full bg-blue-400 animate-pulse" />
+                <span className="text-xs text-zinc-500">Modo TV — registre as ações sem vídeo</span>
+              </>
             ) : (
               <>
-                <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-xs text-zinc-500">Modo TV — registre as ações sem vídeo</span>
+                <div className="h-2 w-2 rounded-full bg-violet-400 animate-pulse" />
+                <span className="text-xs text-zinc-500">Aula Tática — descreva os pontos observados</span>
               </>
             )}
           </div>
@@ -478,8 +505,8 @@ export default function ScoutPlayer({ athletes }: { athletes: AthleteOption[] })
         </div>
       </div>
 
-      {/* ── Video - full width (YouTube mode only) ───────────────────── */}
-      {withVideo && (
+      {/* ── Video - full width (YouTube + Aula Tática) ───────────────── */}
+      {(withVideo || mode === "aulatatics") && (
         <div className="rounded-3xl bg-white/5 ring-1 ring-white/10 p-4">
           <div className="flex items-center justify-between mb-3">
             <p className="text-sm font-semibold text-white">Vídeo</p>
@@ -500,7 +527,34 @@ export default function ScoutPlayer({ athletes }: { athletes: AthleteOption[] })
         </div>
       )}
 
-      {/* ── Bottom grid: clips + actions ────────────────────────────── */}
+      {/* ── Aula Tática: only description ────────────────────────────── */}
+      {mode === "aulatatics" && (
+        <div className="rounded-3xl bg-white/5 ring-1 ring-white/10 p-5 flex flex-col gap-4">
+          <div>
+            <p className="text-sm font-semibold text-white mb-1">Descrição da aula</p>
+            <p className="text-xs text-zinc-500">Anote os pontos táticos abordados, exercícios, observações e feedbacks dados ao atleta.</p>
+          </div>
+          <textarea
+            value={aulaNotes}
+            onChange={(e) => setAulaNotes(e.target.value)}
+            rows={10}
+            placeholder="Descreva o conteúdo da aula tática: esquemas estudados, posicionamento, situações de jogo trabalhadas, pontos fortes e a melhorar…"
+            className="w-full rounded-2xl bg-zinc-900 px-4 py-3 text-sm text-white placeholder-zinc-600 ring-1 ring-white/10 outline-none focus:ring-2 focus:ring-violet-500 transition resize-none leading-relaxed"
+          />
+          <div className="border-t border-white/5 pt-4">
+            <button type="button" onClick={openFinalize} disabled={!selectedAthleteId || !aulaNotes.trim()}
+              className="w-full rounded-2xl bg-violet-600 py-3 text-sm font-bold text-white transition hover:bg-violet-500 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40">
+              Finalizar Aula Tática → Salvar
+            </button>
+            {!selectedAthleteId && (
+              <p className="mt-1.5 text-center text-xs text-zinc-600">Selecione um atleta primeiro</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Bottom grid: clips + actions (YouTube / TV modes only) ──── */}
+      {mode !== "aulatatics" && (
       <div className={`grid gap-4 ${withVideo ? "lg:grid-cols-[1fr_1fr]" : ""}`}>
 
         {/* LEFT: clips (YouTube mode only) */}
@@ -584,7 +638,7 @@ export default function ScoutPlayer({ athletes }: { athletes: AthleteOption[] })
           {/* Finalize */}
           <div className="mt-4 border-t border-white/5 pt-4">
             <button type="button" onClick={openFinalize} disabled={!selectedAthleteId}
-              className="w-full rounded-2xl bg-emerald-600 py-3 text-sm font-bold text-white transition hover:bg-emerald-500 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40">
+              className="w-full rounded-2xl bg-blue-600 py-3 text-sm font-bold text-white transition hover:bg-blue-500 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40">
               Finalizar Scout → Gerar Relatório
             </button>
             {!selectedAthleteId && (
@@ -593,6 +647,7 @@ export default function ScoutPlayer({ athletes }: { athletes: AthleteOption[] })
           </div>
         </div>
       </div>
+      )}
 
       {/* ── Clip modal ──────────────────────────────────────────────────── */}
       <ScoutModal
@@ -610,7 +665,7 @@ export default function ScoutPlayer({ athletes }: { athletes: AthleteOption[] })
 
             <div className="flex shrink-0 items-center justify-between border-b border-white/5 px-6 py-4">
               <div>
-                <h2 className="font-semibold text-white">Finalizar Scout</h2>
+                <h2 className="font-semibold text-white">{mode === "aulatatics" ? "Finalizar Aula Tática" : "Finalizar Scout"}</h2>
                 <p className="mt-0.5 text-xs text-zinc-500">Confirme e envie o relatório para o atleta</p>
               </div>
               <button onClick={() => setFinalizeOpen(false)}
@@ -621,20 +676,22 @@ export default function ScoutPlayer({ athletes }: { athletes: AthleteOption[] })
 
             <form onSubmit={handleFinalize} className="space-y-4 overflow-y-auto px-6 py-5">
 
-              {/* Stats summary */}
-              <div className="grid grid-cols-4 gap-2">
-                {[
-                  { label: "Ações",   value: stats.totalActions, color: "text-blue-400"    },
-                  { label: "Cortes",  value: stats.totalClips,   color: "text-violet-400"  },
-                  { label: "Gols",    value: stats.goals,        color: "text-emerald-400" },
-                  { label: "Assist.", value: stats.assists,      color: "text-amber-400"   },
-                ].map(({ label, value, color }) => (
-                  <div key={label} className="rounded-xl bg-white/5 p-3 text-center ring-1 ring-white/10">
-                    <p className="text-[10px] text-zinc-500">{label}</p>
-                    <p className={`text-xl font-bold ${color}`}>{value}</p>
-                  </div>
-                ))}
-              </div>
+              {/* Stats summary — hidden for Aula Tática */}
+              {mode !== "aulatatics" && (
+                <div className="grid grid-cols-4 gap-2">
+                  {[
+                    { label: "Ações",   value: stats.totalActions, color: "text-blue-400"   },
+                    { label: "Cortes",  value: stats.totalClips,   color: "text-violet-400" },
+                    { label: "Gols",    value: stats.goals,        color: "text-blue-300"   },
+                    { label: "Assist.", value: stats.assists,      color: "text-amber-400"  },
+                  ].map(({ label, value, color }) => (
+                    <div key={label} className="rounded-xl bg-white/5 p-3 text-center ring-1 ring-white/10">
+                      <p className="text-[10px] text-zinc-500">{label}</p>
+                      <p className={`text-xl font-bold ${color}`}>{value}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {/* Athlete chip */}
               {selectedAthlete && (
