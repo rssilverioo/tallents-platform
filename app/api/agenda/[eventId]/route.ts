@@ -17,9 +17,7 @@ export async function DELETE(
 
     const { eventId } = await params;
 
-    const event = await prisma.agendaEvent.findFirst({
-      where: { id: eventId, analystId: analyst.id },
-    });
+    const event = await prisma.agendaEvent.findUnique({ where: { id: eventId } });
     if (!event) {
       return NextResponse.json({ error: "Evento não encontrado" }, { status: 404 });
     }
@@ -49,9 +47,7 @@ export async function PUT(
       return NextResponse.json({ error: "JSON inválido" }, { status: 400 });
     }
 
-    const event = await prisma.agendaEvent.findFirst({
-      where: { id: eventId, analystId: analyst.id },
-    });
+    const event = await prisma.agendaEvent.findUnique({ where: { id: eventId } });
     if (!event) {
       return NextResponse.json({ error: "Evento não encontrado" }, { status: 404 });
     }
