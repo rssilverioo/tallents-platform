@@ -1,6 +1,14 @@
 import { prisma } from "@/app/lib/prisma";
 
 export async function getAnalystFromRequest(req: Request) {
+  // 1. Try API Key (x-api-key header)
+  const apiKey = req.headers.get("x-api-key");
+  if (apiKey) {
+    const analyst = await prisma.analyst.findUnique({ where: { apiKey } });
+    return analyst ?? null;
+  }
+
+  // 2. Fallback to session cookie
   const cookie = req.headers.get("cookie") ?? "";
   const token = cookie
     .split(";")

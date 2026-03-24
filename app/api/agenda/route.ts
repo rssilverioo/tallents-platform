@@ -22,7 +22,6 @@ export async function GET(req: NextRequest) {
 
     const events = await prisma.agendaEvent.findMany({
       where: {
-        analystId: analyst.id,
         startDate: { gte: start, lt: end },
       },
       include: { athlete: { select: { id: true, name: true } } },
