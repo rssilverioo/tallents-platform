@@ -1,61 +1,41 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/app/lib/prisma";
+import bcrypt from "bcryptjs";
 import { randomUUID } from "crypto";
 
 export async function POST(req: Request) {
-  const { nome, dataNascimento } = await req.json();
+  const body = await req.json().catch(() => null);
+  if (!body) return NextResponse.json({ error: "JSON inválido" }, { status: 400 });
 
-  if (!nome || !dataNascimento) {
-    return NextResponse.json({ error: "Dados inválidos" }, { status: 400 });
+  const username: string = String(body.username || "").trim().toLowerCase();
+  const password: string = String(body.password || "");
+
+  if (!username || !password) {
+    return NextResponse.json({ error: "Usuário e senha são obrigatórios" }, { status: 400 });
   }
 
-  // Parse the birth date from the input (YYYY-MM-DD)
-  const birthDate = new Date(dataNascimento);
-  if (isNaN(birthDate.getTime())) {
-    return NextResponse.json({ error: "Data de nascimento inválida" }, { status: 400 });
-  }
+  const athlete = await prisma.athlete.findUnique({ where: { username } });
 
-  // Find athlete by name (case-insensitive) and birth date
-  const athletes = await prisma.athlete.findMany({
-    where: {
-      name: {
-        equals: nome,
-        mode: "insensitive",
-      },
-      birthDate: {
-        not: null,
-      },
-    },
-  });
-
-  // Match by date (compare year, month, day only)
-  const athlete = athletes.find((a) => {
-    if (!a.birthDate) return false;
-    const d = new Date(a.birthDate);
-    return (
-      d.getUTCFullYear() === birthDate.getUTCFullYear() &&
-      d.getUTCMonth() === birthDate.getUTCMonth() &&
-      d.getUTCDate() === birthDate.getUTCDate()
+  if (!athlete || !athlete.passwordHash) {
+    return NextResponse.json(
+      { error: "Usuário não encontrado. Se é seu primeiro acesso, clique em \"Primeiro acesso\"." },
+      { status: 401 }
     );
-  });
+  }
 
-  if (!athlete) {
-    return NextResponse.json({ error: "Atleta não encontrado ou dados incorretos" }, { status: 401 });
+  const valid = await bcrypt.compare(password, athlete.passwordHash);
+  if (!valid) {
+    return NextResponse.json({ error: "Senha incorreta." }, { status: 401 });
   }
 
   const token = randomUUID();
-  const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7); // 7 dias
+  const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7);
 
   await prisma.athleteSession.create({
-    data: {
-      token,
-      expiresAt,
-      athleteId: athlete.id,
-    },
+    data: { token, expiresAt, athleteId: athlete.id },
   });
 
   const res = NextResponse.json({ ok: true });
-
   res.cookies.set("tallents_athlete_session", token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",

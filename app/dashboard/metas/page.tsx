@@ -115,8 +115,8 @@ const GOAL_TYPES = [
 const SCOUT_KEYS: Array<{ key: string; label: string; group: string }> = [
   { key: "gol",               label: "Gols",                group: "Ofensivo"  },
   { key: "assistencia",       label: "Assistências",        group: "Ofensivo"  },
-  { key: "finalizacaoNoAlvo", label: "Final. no alvo",      group: "Ofensivo"  },
-  { key: "finalizacaoFora",   label: "Finalização fora",    group: "Ofensivo"  },
+  { key: "finalizacaoNoAlvo", label: "Final. no gol",      group: "Ofensivo"  },
+  { key: "finalizacaoFora",   label: "Finalização",    group: "Ofensivo"  },
   { key: "cruzamento",        label: "Cruzamentos",         group: "Ofensivo"  },
   { key: "dribleCompleto",    label: "Dribles completos",   group: "Ofensivo"  },
   { key: "dribleIncompleto",  label: "Dribles incompletos", group: "Ofensivo"  },

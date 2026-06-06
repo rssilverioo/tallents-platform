@@ -5,7 +5,7 @@ import Image from "next/image";
 import {
   Plus, ChevronDown, Download, X, FileText,
   Film, BarChart2, AlignLeft, Clock, Scissors,
-  Zap, Shield, TrendingUp, Trash2,
+  Zap, Shield, TrendingUp, Trash2, Pencil,
 } from "lucide-react";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -47,8 +47,8 @@ const COUNT_SECTIONS = [
     keys: [
       ["Gol",               "gol"],
       ["Assistência",       "assistencia"],
-      ["Final. no alvo",    "finalizacaoNoAlvo"],
-      ["Finalização fora",  "finalizacaoFora"],
+      ["Final. no gol",    "finalizacaoNoAlvo"],
+      ["Finalização",  "finalizacaoFora"],
       ["Cruzamento",        "cruzamento"],
       ["Campo ofensivo",    "passeCampoOfensivo"],
       ["Falta sofrida",     "faltaSofrida"],
@@ -185,7 +185,11 @@ function ClipItem({ clip, index }: { clip: Clip; index: number }) {
 
 type CardTab = "resumo" | "graficos" | "cortes";
 
-function ReportCard({ report, onDelete }: { report: Report; onDelete: (id: string) => void }) {
+function ReportCard({ report, onDelete, onEdit }: {
+  report: Report;
+  onDelete: (id: string) => void;
+  onEdit: (report: Report) => void;
+}) {
   const [expanded, setExpanded] = useState(false);
   const [tab, setTab] = useState<CardTab>("resumo");
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -210,8 +214,8 @@ function ReportCard({ report, onDelete }: { report: Report; onDelete: (id: strin
   }));
 
   // Chart data
-  const passCorrect = (c.passeCertoOfensivo ?? 0) + (c.passeDecisivo ?? 0) + (c.passeEntreLinhas ?? 0) + (c.passeParaTras ?? 0);
-  const passWrong = (c.passeErrado ?? 0) + (c.perdaPosse ?? 0);
+  const passCorrect = c.passeCertoOfensivo ?? 0;
+  const passWrong = c.passeErrado ?? 0;
 
   const allRows: { label: string; value: number; color: string }[] = [];
   for (const sec of COUNT_SECTIONS) {
@@ -308,6 +312,13 @@ function ReportCard({ report, onDelete }: { report: Report; onDelete: (id: strin
             <Download className="h-3.5 w-3.5" />
             PDF
           </a>
+          <button
+            onClick={() => onEdit(report)}
+            title="Editar relatório"
+            className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/5 text-zinc-500 ring-1 ring-white/8 transition hover:bg-amber-500/15 hover:text-amber-400"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </button>
           <button
             onClick={() => setConfirmDelete(true)}
             title="Excluir relatório"
@@ -511,6 +522,11 @@ export default function ReportsPage() {
   const [erro, setErro] = useState("");
   const firstInputRef = useRef<HTMLSelectElement>(null);
 
+  const [editingReport, setEditingReport] = useState<Report | null>(null);
+  const [editForm, setEditForm] = useState({ title: "", summary: "", tags: "" });
+  const [editSaving, setEditSaving] = useState(false);
+  const [editErro, setEditErro] = useState("");
+
   const fetchReports = useCallback(async (aId = "") => {
     setLoading(true);
     try {
@@ -540,6 +556,30 @@ export default function ReportsPage() {
     setTimeout(() => firstInputRef.current?.focus(), 50);
   }
   function closeModal() { setModalOpen(false); setErro(""); }
+
+  function openEditModal(report: Report) {
+    setEditingReport(report);
+    setEditForm({ title: report.title, summary: report.summary, tags: report.tags.join(", ") });
+    setEditErro("");
+  }
+  function closeEditModal() { setEditingReport(null); setEditErro(""); }
+
+  async function handleEditSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault(); setEditErro(""); setEditSaving(true);
+    try {
+      const res = await fetch(`/api/analyst-reports/${editingReport!.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editForm),
+      });
+      const data = await res.json();
+      if (!res.ok) { setEditErro(data?.error || "Erro ao salvar."); return; }
+      setReports((prev) => prev.map((r) => r.id === data.report.id ? data.report : r));
+      closeEditModal();
+    } catch {
+      setEditErro("Erro ao conectar com o servidor.");
+    } finally { setEditSaving(false); }
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault(); setErro(""); setSaving(true);
@@ -641,8 +681,69 @@ export default function ReportsPage() {
               key={r.id}
               report={r}
               onDelete={(id) => setReports((prev) => prev.filter((x) => x.id !== id))}
+              onEdit={openEditModal}
             />
           ))}
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {editingReport && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={closeEditModal} />
+          <div className="relative flex max-h-[90vh] w-full max-w-lg flex-col rounded-3xl bg-zinc-900 shadow-2xl ring-1 ring-white/10">
+            <div className="flex shrink-0 items-center justify-between border-b border-white/5 px-6 py-4">
+              <div>
+                <h2 className="font-semibold text-white">Editar relatório</h2>
+                <p className="mt-0.5 text-xs text-zinc-500">{editingReport.athlete.name}</p>
+              </div>
+              <button onClick={closeEditModal} className="flex h-8 w-8 items-center justify-center rounded-xl text-zinc-400 transition hover:bg-white/5 hover:text-white">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleEditSubmit} className="space-y-4 overflow-y-auto px-6 py-5">
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-zinc-400">Título <span className="text-red-400">*</span></label>
+                <input
+                  type="text" required
+                  value={editForm.title} onChange={(e) => setEditForm((f) => ({ ...f, title: e.target.value }))}
+                  className="w-full rounded-xl bg-zinc-800 px-3.5 py-2.5 text-sm text-white placeholder-zinc-500 outline-none ring-1 ring-white/10 transition focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-zinc-400">Resumo / Observações <span className="text-red-400">*</span></label>
+                <textarea
+                  required rows={4}
+                  value={editForm.summary} onChange={(e) => setEditForm((f) => ({ ...f, summary: e.target.value }))}
+                  className="w-full resize-none rounded-xl bg-zinc-800 px-3.5 py-2.5 text-sm text-white placeholder-zinc-500 outline-none ring-1 ring-white/10 transition focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-zinc-400">
+                  Tags <span className="text-zinc-600">(separadas por vírgula)</span>
+                </label>
+                <input
+                  type="text" placeholder="Ex: Passe, Decisão, Pressão alta"
+                  value={editForm.tags} onChange={(e) => setEditForm((f) => ({ ...f, tags: e.target.value }))}
+                  className="w-full rounded-xl bg-zinc-800 px-3.5 py-2.5 text-sm text-white placeholder-zinc-500 outline-none ring-1 ring-white/10 transition focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              {editErro && (
+                <div className="rounded-xl bg-red-500/10 px-4 py-2.5 text-sm text-red-400 ring-1 ring-red-500/20">{editErro}</div>
+              )}
+
+              <div className="flex gap-3 pt-1">
+                <button type="button" onClick={closeEditModal} className="flex-1 rounded-xl bg-white/5 py-2.5 text-sm font-medium text-zinc-300 ring-1 ring-white/10 transition hover:bg-white/10">Cancelar</button>
+                <button type="submit" disabled={editSaving} className="flex-1 rounded-xl bg-blue-600 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:opacity-50">
+                  {editSaving ? "Salvando..." : "Salvar alterações"}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 

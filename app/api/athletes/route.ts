@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/app/lib/prisma";
+import { getAnalystFromRequest } from "@/app/lib/getAnalyst";
 
 function badRequest(msg: string) {
   return NextResponse.json({ error: msg }, { status: 400 });
@@ -7,8 +8,10 @@ function badRequest(msg: string) {
 
 export async function GET(req: Request) {
   try {
-    const { searchParams } = new URL(req.url);
+    const analyst = await getAnalystFromRequest(req);
+    if (!analyst) return NextResponse.json({ error: "Não autenticado", athletes: [] }, { status: 401 });
 
+    const { searchParams } = new URL(req.url);
     const q = searchParams.get("q")?.trim() || "";
     const team = searchParams.get("team")?.trim() || undefined;
     const position = searchParams.get("position")?.trim() || undefined;
@@ -16,17 +19,17 @@ export async function GET(req: Request) {
     const athletes = await prisma.athlete.findMany({
       where: {
         AND: [
+          // Show own athletes + unassigned (legacy) athletes
+          { OR: [{ analystId: analyst.id }, { analystId: null }] },
           team ? { team } : {},
           position ? { position } : {},
-          q
-            ? {
-                OR: [
-                  { name: { contains: q, mode: "insensitive" } },
-                  { team: { contains: q, mode: "insensitive" } },
-                  { position: { contains: q, mode: "insensitive" } },
-                ],
-              }
-            : {},
+          q ? {
+            OR: [
+              { name: { contains: q, mode: "insensitive" } },
+              { team: { contains: q, mode: "insensitive" } },
+              { position: { contains: q, mode: "insensitive" } },
+            ],
+          } : {},
         ],
       },
       orderBy: { createdAt: "desc" },
@@ -35,12 +38,14 @@ export async function GET(req: Request) {
     return NextResponse.json({ athletes });
   } catch (err) {
     console.error("[GET /api/athletes]", err);
-    const message = err instanceof Error ? err.message : "Erro interno";
-    return NextResponse.json({ error: message, athletes: [] }, { status: 500 });
+    return NextResponse.json({ error: "Erro interno", athletes: [] }, { status: 500 });
   }
 }
 
 export async function POST(req: Request) {
+  const analyst = await getAnalystFromRequest(req);
+  if (!analyst) return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
+
   const body = await req.json().catch(() => null);
   if (!body) return badRequest("JSON inválido");
 
@@ -49,13 +54,6 @@ export async function POST(req: Request) {
   const position = String(body.position || "").trim();
   const photo = body.photo ? String(body.photo).trim() : "";
   const birthDateRaw = body.birthDate ? String(body.birthDate).trim() : null;
-
-  const remainingMeetingsRaw = body.remainingMeetings;
-  const remainingMeetings =
-    remainingMeetingsRaw === undefined || remainingMeetingsRaw === null
-      ? 0
-      : Number(remainingMeetingsRaw);
-
   const planType = body.planType ? String(body.planType).trim() : null;
   const planStartDateRaw = body.planStartDate ? String(body.planStartDate).trim() : null;
   const planEndDateRaw = body.planEndDate ? String(body.planEndDate).trim() : null;
@@ -63,14 +61,9 @@ export async function POST(req: Request) {
   if (!name) return badRequest("name é obrigatório");
   if (!team) return badRequest("team é obrigatório");
   if (!position) return badRequest("position é obrigatório");
-  if (!Number.isFinite(remainingMeetings) || remainingMeetings < 0) {
-    return badRequest("remainingMeetings deve ser um número >= 0");
-  }
 
   const birthDate = birthDateRaw ? new Date(birthDateRaw) : null;
-  if (birthDateRaw && isNaN(birthDate!.getTime())) {
-    return badRequest("birthDate inválido");
-  }
+  if (birthDateRaw && isNaN(birthDate!.getTime())) return badRequest("birthDate inválido");
 
   const planStartDate = planStartDateRaw ? new Date(planStartDateRaw) : null;
   const planEndDate = planEndDateRaw ? new Date(planEndDateRaw) : null;
@@ -78,22 +71,17 @@ export async function POST(req: Request) {
   try {
     const athlete = await prisma.athlete.create({
       data: {
-        name,
-        team,
-        position,
-        remainingMeetings: Math.floor(remainingMeetings),
-        photo,
+        name, team, position, photo,
+        analystId: analyst.id,
         ...(birthDate ? { birthDate } : {}),
         ...(planType ? { planType } : {}),
         ...(planStartDate ? { planStartDate } : {}),
         ...(planEndDate ? { planEndDate } : {}),
       },
     });
-
     return NextResponse.json({ ok: true, athlete }, { status: 201 });
   } catch (err) {
     console.error("[POST /api/athletes]", err);
-    const message = err instanceof Error ? err.message : "Erro interno";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: "Erro interno" }, { status: 500 });
   }
 }

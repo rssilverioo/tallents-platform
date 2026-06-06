@@ -119,7 +119,7 @@ function generateSummary(counts: ScoutCounts, athleteName: string): string {
   if (counts.assistencia > 0)
     parts.push(`${counts.assistencia} assistência(s)`);
   if (counts.finalizacaoNoAlvo > 0)
-    parts.push(`${counts.finalizacaoNoAlvo} finalização(ões) no alvo`);
+    parts.push(`${counts.finalizacaoNoAlvo} finalização(ões) no gol`);
 
   const totalDef =
     counts.desarme + counts.interceptacao + counts.recuperacaoPosse;
@@ -143,7 +143,7 @@ export async function GET(req: Request) {
 
     const scouts = await prisma.scout.findMany({
       where: { athleteId },
-      include: { clips: true },
+      include: { clips: true, analystReport: { select: { title: true } } },
       orderBy: { createdAt: "desc" },
     });
 
@@ -159,11 +159,15 @@ export async function POST(req: Request) {
     const body = await req.json().catch(() => null);
     if (!body) return NextResponse.json({ error: "JSON inválido" }, { status: 400 });
 
-    const { athleteId, youtubeUrl, counts, clips } = body as {
+    const { athleteId, youtubeUrl, counts, clips, minutesPlayed, sofaScore, title: bodyTitle, analystReportId } = body as {
       athleteId: string;
       youtubeUrl: string;
       counts: ScoutCounts;
       clips: ClipInput[];
+      minutesPlayed?: number | null;
+      sofaScore?: number | null;
+      title?: string;
+      analystReportId?: string | null;
     };
 
     if (!athleteId || !counts) {
@@ -188,6 +192,9 @@ export async function POST(req: Request) {
         athleteId,
         youtubeUrl: youtubeUrl ?? "",
         counts: counts as any,
+        minutesPlayed: minutesPlayed ?? null,
+        sofaScore: sofaScore ?? null,
+        analystReportId: analystReportId ?? null,
         clips: {
           create: (clips || []).map((c) => ({
             start: c.start,
@@ -204,7 +211,7 @@ export async function POST(req: Request) {
     const metrics = computeMetrics(counts);
     const tags = generateTags(counts);
     const summary = generateSummary(counts, athlete.name);
-    const title = `Relatório — Scout ${athlete.name} (${athlete.position})`;
+    const title = (bodyTitle ?? "").trim() || `Scout — ${athlete.name} (${athlete.position})`;
 
     const report = await prisma.report.create({
       data: {

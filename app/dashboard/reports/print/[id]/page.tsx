@@ -149,8 +149,8 @@ export default function PrintReportPage() {
           rows: [
             ["Gol",                 counts.gol],
             ["Assistência",         counts.assistencia],
-            ["Finalização no alvo", counts.finalizacaoNoAlvo],
-            ["Finalização fora",        counts.finalizacaoFora],
+            ["Finalização no gol", counts.finalizacaoNoAlvo],
+            ["Finalização",        counts.finalizacaoFora],
             ["Cruzamento",              counts.cruzamento],
             ["Passe campo ofensivo",    counts.passeCampoOfensivo ?? 0],
             ["Falta sofrida",           counts.faltaSofrida ?? 0],

@@ -14,11 +14,13 @@ model Analyst {
   username  String   @unique
   password  String
   apiKey    String?  @unique
+  isAdmin   Boolean  @default(false)
   createdAt DateTime @default(now())
 
   sessions       AnalystSession[]
   analystReports AnalystReport[]
   agendaEvents   AgendaEvent[]
+  athletes       Athlete[]
 }
 
 model AnalystSession {
@@ -41,6 +43,10 @@ model Athlete {
   remainingMeetings Int             @default(0)
   photo             String          @default("")
   birthDate         DateTime?
+  username          String?         @unique
+  passwordHash      String?
+  analystId         String?
+  analyst           Analyst?        @relation(fields: [analystId], references: [id], onDelete: SetNull)
   planType          String?
   planStartDate     DateTime?
   planEndDate       DateTime?
@@ -92,15 +98,20 @@ model AgendaEvent {
 }
 
 model Scout {
-  id         String      @id @default(cuid())
-  youtubeUrl String
-  counts     Json
-  createdAt  DateTime    @default(now())
+  id              String         @id @default(cuid())
+  youtubeUrl      String
+  counts          Json
+  minutesPlayed   Int?
+  sofaScore       Float?
+  createdAt       DateTime       @default(now())
 
-  athleteId  String
-  athlete    Athlete     @relation(fields: [athleteId], references: [id], onDelete: Cascade)
-  clips      ScoutClip[]
-  report     Report?
+  athleteId       String
+  athlete         Athlete        @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  clips           ScoutClip[]
+  report          Report?
+
+  analystReportId String?        @unique
+  analystReport   AnalystReport? @relation(fields: [analystReportId], references: [id], onDelete: SetNull)
 }
 
 model ScoutClip {
@@ -140,6 +151,8 @@ model AnalystReport {
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  scout       Scout?
 
   @@index([athleteId])
   @@index([analystId])

@@ -35,7 +35,7 @@ type FullAthlete = Athlete & {
 
 const COUNT_SECTIONS = [
   { label: "Passes",    color: "#60a5fa", keys: [["Passe certo","passeCertoOfensivo"],["Passe decisivo","passeDecisivo"],["Passe entre linhas","passeEntreLinhas"],["Passe para trás","passeParaTras"],["Passe errado","passeErrado"],["Perca da posse","perdaPosse"]] },
-  { label: "Ofensivo",  color: "#34d399", keys: [["Gol","gol"],["Assistência","assistencia"],["Final. no alvo","finalizacaoNoAlvo"],["Finalização fora","finalizacaoFora"],["Cruzamento","cruzamento"],["Campo ofensivo","passeCampoOfensivo"],["Falta sofrida","faltaSofrida"],["Impedimento","impedimento"],["Drible completo","dribleCompleto"],["Drible incompleto","dribleIncompleto"]] },
+  { label: "Ofensivo",  color: "#34d399", keys: [["Gol","gol"],["Assistência","assistencia"],["Final. no gol","finalizacaoNoAlvo"],["Finalização","finalizacaoFora"],["Cruzamento","cruzamento"],["Campo ofensivo","passeCampoOfensivo"],["Falta sofrida","faltaSofrida"],["Impedimento","impedimento"],["Drible completo","dribleCompleto"],["Drible incompleto","dribleIncompleto"]] },
   { label: "Defensivo", color: "#a78bfa", keys: [["Desarme","desarme"],["Interceptação","interceptacao"],["Rec. de posse","recuperacaoPosse"],["Pressão pós-perda","pressaoPosPerda"],["Aéreo ganho","aereoGanho"],["Aéreo perdido","aereoPerdido"],["Campo defensivo","passeCampoDefensivo"],["Falta cometida","faltaCometida"]] },
 ] as const;
 
@@ -171,7 +171,6 @@ function AthleteProfileModal({ athlete, onClose }: { athlete: FullAthlete; onClo
               {[
                 { label: "Scouts", val: scouts.length, color: "text-blue-400" },
                 { label: "Relatórios", val: reports.length, color: "text-emerald-400" },
-                { label: "Encontros", val: athlete.remainingMeetings, color: "text-violet-400" },
               ].map((s) => (
                 <div key={s.label} className="rounded-2xl bg-white/5 px-3 py-2 text-center ring-1 ring-white/10">
                   <p className={`text-xl font-bold ${s.color}`}>{s.val}</p>
@@ -332,7 +331,6 @@ function AthleteProfileModal({ athlete, onClose }: { athlete: FullAthlete; onClo
                   athlete.planType ? ["Plano", athlete.planType] : null,
                   athlete.planStartDate ? ["Início do plano", new Date(athlete.planStartDate).toLocaleDateString("pt-BR")] : null,
                   athlete.planEndDate ? ["Término do plano", new Date(athlete.planEndDate).toLocaleDateString("pt-BR")] : null,
-                  ["Encontros restantes", String(athlete.remainingMeetings)],
                 ].filter((row): row is [string, string] => row !== null).map(([label, value]) => (
                   <div key={label} className="flex items-center justify-between border-b border-white/5 px-4 py-3 last:border-0">
                     <span className="text-xs text-zinc-500">{label}</span>
@@ -627,19 +625,11 @@ export default function AthletesPage() {
               </div>
 
               {/* Data de nascimento + Encontros */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="mb-1.5 block text-xs font-medium text-zinc-400">Data de nascimento</label>
-                  <input type="date"
-                    className="w-full rounded-xl bg-zinc-800 px-3.5 py-2.5 text-sm text-white ring-1 ring-white/10 outline-none focus:ring-2 focus:ring-blue-500 transition scheme-dark"
-                    {...field("birthDate")} />
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-xs font-medium text-zinc-400">Encontros restantes</label>
-                  <input type="number" min="0" placeholder="0"
-                    className="w-full rounded-xl bg-zinc-800 px-3.5 py-2.5 text-sm text-white placeholder-zinc-500 ring-1 ring-white/10 outline-none focus:ring-2 focus:ring-blue-500 transition"
-                    {...field("remainingMeetings")} />
-                </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-zinc-400">Data de nascimento</label>
+                <input type="date"
+                  className="w-full rounded-xl bg-zinc-800 px-3.5 py-2.5 text-sm text-white ring-1 ring-white/10 outline-none focus:ring-2 focus:ring-blue-500 transition scheme-dark"
+                  {...field("birthDate")} />
               </div>
 
               {/* Plano */}

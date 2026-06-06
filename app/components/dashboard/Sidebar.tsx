@@ -6,21 +6,22 @@ import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import { Menu, X } from "lucide-react";
 
-const items = [
+const BASE_ITEMS = [
   { href: "/dashboard/athletes", label: "Atletas" },
   { href: "/dashboard/scout", label: "Scout" },
   { href: "/dashboard/reports", label: "Relatórios" },
-  { href: "/dashboard/agenda", label: "Agenda" },
   { href: "/dashboard/encontros", label: "Encontros" },
-  { href: "/dashboard/status", label: "Status dos Planos" },
   { href: "/dashboard/metas", label: "Metas" },
 ];
+
+const ADMIN_ITEM = { href: "/dashboard/analistas", label: "Analistas" };
 
 function cx(...classes: Array<string | false | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
 
-function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
+function NavLinks({ pathname, showAdminTab, onNavigate }: { pathname: string; showAdminTab: boolean; onNavigate?: () => void }) {
+  const items = showAdminTab ? [...BASE_ITEMS, ADMIN_ITEM] : BASE_ITEMS;
   return (
     <div className="mt-6 space-y-2">
       {items.map((it) => {
@@ -54,6 +55,18 @@ function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () 
 export default function Sidebar() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminExists, setAdminExists] = useState(true); // assume true until we know
+
+  useEffect(() => {
+    fetch("/api/analyst/me")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d?.analyst?.isAdmin) setIsAdmin(true);
+        if (d?.adminExists === false) setAdminExists(false);
+      })
+      .catch(() => {});
+  }, []);
 
   // Fecha ao mudar de rota
   useEffect(() => {
@@ -126,7 +139,7 @@ export default function Sidebar() {
               </button>
             </div>
 
-            <NavLinks pathname={pathname} onNavigate={() => setOpen(false)} />
+            <NavLinks pathname={pathname} showAdminTab={isAdmin || !adminExists} onNavigate={() => setOpen(false)} />
 
             <div className="mt-auto space-y-3">
               <div className="rounded-2xl bg-white/5 p-3 ring-1 ring-white/10">
@@ -156,7 +169,7 @@ export default function Sidebar() {
           </div>
         </div>
 
-        <NavLinks pathname={pathname} />
+        <NavLinks pathname={pathname} showAdminTab={isAdmin || !adminExists} />
 
         <div className="mt-auto space-y-3">
           <div className="rounded-2xl bg-white/5 p-3 ring-1 ring-white/10">

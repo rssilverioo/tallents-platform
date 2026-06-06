@@ -1,5 +1,5 @@
 import type { Athlete } from "./types";
-import { Pencil, Trash2, CalendarDays, ExternalLink } from "lucide-react";
+import { Pencil, Trash2, ExternalLink } from "lucide-react";
 
 interface AthleteCardProps {
   athlete: Athlete;
@@ -19,17 +19,9 @@ const POSITION_COLORS: Record<string, { accent: string; bg: string; text: string
 
 const DEFAULT_POS = { accent: "from-zinc-500/15", bg: "bg-zinc-500/10", text: "text-zinc-300", ring: "ring-zinc-500/20", dot: "bg-zinc-400" };
 
-function getMeetingStyle(n: number) {
-  if (n === 0) return { color: "text-zinc-500", label: "Concluído", badge: "bg-zinc-800 text-zinc-500 ring-white/5" };
-  if (n <= 2)  return { color: "text-rose-400",  label: "restantes", badge: "bg-rose-500/10 text-rose-400 ring-rose-500/20" };
-  if (n <= 4)  return { color: "text-amber-400", label: "restantes", badge: "bg-amber-500/10 text-amber-400 ring-amber-500/20" };
-  return       { color: "text-blue-300",  label: "restantes", badge: "bg-blue-500/10 text-blue-300 ring-blue-500/20" };
-}
-
 export default function AthleteCard({ athlete, onEdit, onDelete, onViewProfile }: AthleteCardProps) {
   const hasPhoto = Boolean(athlete.photo);
   const pos = POSITION_COLORS[athlete.position] ?? DEFAULT_POS;
-  const meeting = getMeetingStyle(athlete.remainingMeetings);
 
   return (
     <div className="group relative flex flex-col overflow-hidden rounded-3xl bg-zinc-900 ring-1 ring-white/8 transition duration-200 hover:ring-white/15 hover:shadow-2xl hover:shadow-black/40 min-h-45">
@@ -116,21 +108,6 @@ export default function AthleteCard({ athlete, onEdit, onDelete, onViewProfile }
         {/* Spacer */}
         <div className="flex-1" />
 
-        {/* Bottom: meetings */}
-        <div className="mt-4 flex items-center justify-between border-t border-white/5 pt-4">
-          <div className="flex items-center gap-1.5">
-            <CalendarDays className="h-3.5 w-3.5 text-zinc-600" />
-            <span className="text-xs text-zinc-500">Encontros</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className={`text-xl font-bold tabular-nums leading-none ${meeting.color}`}>
-              {athlete.remainingMeetings}
-            </span>
-            <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${meeting.badge}`}>
-              {meeting.label}
-            </span>
-          </div>
-        </div>
       </div>
     </div>
   );

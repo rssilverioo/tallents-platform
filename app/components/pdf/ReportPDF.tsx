@@ -286,8 +286,8 @@ export function ReportPDF({ report }: { report: ReportData }) {
           rows: [
             ["Gol",                     counts.gol],
             ["Assistência",             counts.assistencia],
-            ["Final. no alvo",          counts.finalizacaoNoAlvo],
-            ["Finalização fora",        counts.finalizacaoFora],
+            ["Final. no gol",          counts.finalizacaoNoAlvo],
+            ["Finalização",        counts.finalizacaoFora],
             ["Cruzamento",              counts.cruzamento],
             ["Passe campo ofensivo",    counts.passeCampoOfensivo ?? 0],
             ["Falta sofrida",           counts.faltaSofrida ?? 0],

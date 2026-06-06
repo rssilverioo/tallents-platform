@@ -16,7 +16,6 @@ type Athlete = {
   name: string;
   team: string;
   position: string;
-  remainingMeetings: number;
   photo: string;
 };
 
@@ -37,6 +36,7 @@ type Scout = {
   createdAt: string;
   clips: ScoutClip[];
   counts: ScoutCounts | null;
+  analystReport: { title: string } | null;
 };
 
 const COUNT_SECTIONS = [
@@ -58,8 +58,8 @@ const COUNT_SECTIONS = [
     keys: [
       ["Gol",                   "gol"],
       ["Assistência",           "assistencia"],
-      ["Final. no alvo",        "finalizacaoNoAlvo"],
-      ["Finalização fora",      "finalizacaoFora"],
+      ["Final. no gol",        "finalizacaoNoAlvo"],
+      ["Finalização",      "finalizacaoFora"],
       ["Cruzamento",            "cruzamento"],
       ["Campo ofensivo",        "passeCampoOfensivo"],
       ["Falta sofrida",         "faltaSofrida"],
@@ -236,14 +236,8 @@ function EncounterModal({
   }
 
   async function handleFinish() {
-    if (athlete.remainingMeetings <= 0) return;
     setFinishing(true);
     try {
-      await fetch(`/api/athletes/${athlete.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ remainingMeetings: athlete.remainingMeetings - 1 }),
-      });
       setDone(true);
       onFinish(athlete.id);
     } finally {
@@ -276,10 +270,7 @@ function EncounterModal({
             </div>
             <div>
               <p className="font-semibold text-white">{athlete.name}</p>
-              <p className="text-xs text-zinc-400">
-                {athlete.team} · {athlete.position} ·{" "}
-                <span className="text-blue-300">{athlete.remainingMeetings} encontros restantes</span>
-              </p>
+              <p className="text-xs text-zinc-400">{athlete.team} · {athlete.position}</p>
             </div>
           </div>
           <button
@@ -314,7 +305,9 @@ function EncounterModal({
                         : "bg-white/5 ring-white/10 text-zinc-300 hover:bg-white/10"
                     }`}
                   >
-                    <p className="text-xs font-semibold">Scout #{scouts.length - i}</p>
+                    <p className="text-xs font-semibold leading-snug line-clamp-2">
+                      {s.analystReport?.title ?? `Scout #${scouts.length - i}`}
+                    </p>
                     <p className="mt-0.5 text-[11px] text-zinc-400">{formatDate(s.createdAt)}</p>
                     <p className="mt-0.5 text-[11px] text-zinc-500">
                       {s.clips.length} lance{s.clips.length !== 1 ? "s" : ""}
@@ -530,31 +523,22 @@ function EncounterModal({
         </div>
 
         {/* Footer */}
-        <div className="shrink-0 border-t border-white/5 px-6 py-4 flex items-center justify-between">
-          <p className="text-xs text-zinc-500">
-            {done
-              ? "Encontro finalizado!"
-              : athlete.remainingMeetings <= 0
-                ? "Sem encontros restantes"
-                : "Ao finalizar, o contador de encontros será decrementado"}
-          </p>
-          <div className="flex gap-3">
+        <div className="shrink-0 border-t border-white/5 px-6 py-4 flex items-center justify-end gap-3">
+          <button
+            onClick={onClose}
+            className="rounded-xl bg-white/5 px-5 py-2.5 text-sm font-medium text-zinc-300 ring-1 ring-white/10 transition hover:bg-white/10"
+          >
+            {done ? "Fechar" : "Cancelar"}
+          </button>
+          {!done && (
             <button
-              onClick={onClose}
-              className="rounded-xl bg-white/5 px-5 py-2.5 text-sm font-medium text-zinc-300 ring-1 ring-white/10 transition hover:bg-white/10"
+              onClick={handleFinish}
+              disabled={finishing}
+              className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:opacity-50"
             >
-              {done ? "Fechar" : "Cancelar"}
+              {finishing ? "Finalizando..." : "Finalizar Encontro"}
             </button>
-            {!done && (
-              <button
-                onClick={handleFinish}
-                disabled={finishing || athlete.remainingMeetings <= 0}
-                className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:opacity-50"
-              >
-                {finishing ? "Finalizando..." : "Finalizar Encontro"}
-              </button>
-            )}
-          </div>
+          )}
         </div>
       </div>
     </div>
@@ -585,14 +569,8 @@ export default function EncountrosPage() {
     fetchAthletes();
   }, [fetchAthletes]);
 
-  function handleFinish(athleteId: string) {
-    setAthletes((prev) =>
-      prev.map((a) =>
-        a.id === athleteId
-          ? { ...a, remainingMeetings: Math.max(0, a.remainingMeetings - 1) }
-          : a
-      )
-    );
+  function handleFinish(_athleteId: string) {
+    // nothing to update
   }
 
   return (
@@ -640,18 +618,13 @@ export default function EncountrosPage() {
                   <p className="truncate font-semibold">{a.name}</p>
                   <p className="text-xs text-zinc-400">{a.team} · {a.position}</p>
                 </div>
-                <div className="shrink-0 text-right">
-                  <p className="text-2xl font-bold text-blue-300">{a.remainingMeetings}</p>
-                  <p className="text-[10px] text-zinc-500 uppercase tracking-wide">restantes</p>
-                </div>
               </div>
 
               <button
                 onClick={() => setActiveAthlete(a)}
-                disabled={a.remainingMeetings <= 0}
-                className="mt-4 w-full rounded-2xl bg-blue-600 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-500 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+                className="mt-4 w-full rounded-2xl bg-blue-600 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-500 active:scale-[0.98]"
               >
-                {a.remainingMeetings <= 0 ? "Sem encontros restantes" : "Iniciar Encontro"}
+                Iniciar Encontro
               </button>
             </div>
           ))}

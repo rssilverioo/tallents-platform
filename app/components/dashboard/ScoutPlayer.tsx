@@ -86,8 +86,8 @@ const PASS_ACTIONS: ActionItem[] = [
 const OFF_ACTIONS: ActionItem[] = [
   { key: "gol",                label: "Gol" },
   { key: "assistencia",        label: "Assistência" },
-  { key: "finalizacaoNoAlvo",  label: "Finalização no alvo" },
-  { key: "finalizacaoFora",    label: "Finalização fora" },
+  { key: "finalizacaoNoAlvo",  label: "Finalização no gol" },
+  { key: "finalizacaoFora",    label: "Finalização" },
   { key: "cruzamento",         label: "Cruzamento" },
   { key: "passeCampoOfensivo", label: "Passe no campo ofensivo" },
   { key: "faltaSofrida",       label: "Falta sofrida" },
@@ -188,7 +188,7 @@ export default function ScoutPlayer({ athletes }: { athletes: AthleteOption[] })
 
   const [finalizeOpen, setFinalizeOpen] = useState(false);
   const [finalForm, setFinalForm] = useState({
-    title: "", summary: "", tags: "",
+    title: "", summary: "", tags: "", minutesPlayed: "", sofaScore: "",
   });
   const [saving, setSaving]       = useState(false);
   const [saveError, setSaveError] = useState("");
@@ -270,6 +270,9 @@ export default function ScoutPlayer({ athletes }: { athletes: AthleteOption[] })
       description: meta.description.trim(), confidence: meta.confidence,
     };
     setClips((prev) => [...prev, newClip]);
+    if (meta.actionKey && meta.actionKey in DEFAULT_COUNTS) {
+      inc(meta.actionKey as keyof ScoutCounts);
+    }
     setPendingRange(null);
     setClipModalOpen(false);
   }
@@ -310,6 +313,8 @@ export default function ScoutPlayer({ athletes }: { athletes: AthleteOption[] })
       title: athlete ? `${prefix} — ${athlete.name} — ${new Date().toLocaleDateString("pt-BR")}` : "",
       summary: mode === "aulatatics" ? aulaNotes : "",
       tags: mode === "aulatatics" ? "aula-tatica" : "",
+      minutesPlayed: "",
+      sofaScore: "",
     });
     setSaveError("");
     setFinalizeOpen(true);
@@ -332,34 +337,41 @@ export default function ScoutPlayer({ athletes }: { athletes: AthleteOption[] })
       const saveCounts = isAula ? DEFAULT_COUNTS : counts;
       const saveClips = isAula ? [] : clipPayload;
 
-      const [scoutRes, reportRes] = await Promise.all([
-        fetch("/api/scouts", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            athleteId: selectedAthleteId,
-            youtubeUrl,
-            counts: saveCounts,
-            clips: saveClips,
-          }),
-        }),
-        fetch("/api/analyst-reports", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            athleteId: selectedAthleteId,
-            title: finalForm.title,
-            summary: finalForm.summary,
-            tags: finalForm.tags,
-            clips: saveClips,
-            counts: saveCounts,
-            youtubeUrl,
-          }),
-        }),
-      ]);
+      const minutesPlayed = finalForm.minutesPlayed ? parseInt(finalForm.minutesPlayed, 10) : null;
+      const sofaScore = finalForm.sofaScore ? parseFloat(finalForm.sofaScore) : null;
 
+      // Create AnalystReport first to get its ID
+      const reportRes = await fetch("/api/analyst-reports", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          athleteId: selectedAthleteId,
+          title: finalForm.title,
+          summary: finalForm.summary,
+          tags: finalForm.tags,
+          clips: saveClips,
+          counts: saveCounts,
+          youtubeUrl,
+        }),
+      });
       const reportData = await reportRes.json().catch(() => ({}));
       if (!reportRes.ok) { setSaveError((reportData as any)?.error || "Erro ao salvar relatório."); return; }
+
+      // Create Scout linked to the AnalystReport
+      const scoutRes = await fetch("/api/scouts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          athleteId: selectedAthleteId,
+          youtubeUrl,
+          counts: saveCounts,
+          clips: saveClips,
+          minutesPlayed,
+          sofaScore,
+          title: finalForm.title,
+          analystReportId: (reportData as any)?.report?.id ?? null,
+        }),
+      });
       const scoutData = await scoutRes.json().catch(() => ({}));
       if (!scoutRes.ok) {
         setSaveError((scoutData as any)?.error || "Erro ao salvar scout.");
@@ -722,6 +734,31 @@ export default function ScoutPlayer({ athletes }: { athletes: AthleteOption[] })
                 <input type="text" value={finalForm.tags} placeholder="Ex: Passes, Pressão alta, Aéreo"
                   onChange={(e) => setFinalForm((f) => ({ ...f, tags: e.target.value }))}
                   className="w-full rounded-xl bg-zinc-800 px-3.5 py-2.5 text-sm text-white placeholder-zinc-500 ring-1 ring-white/10 outline-none focus:ring-2 focus:ring-blue-500 transition" />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1.5 block text-xs font-medium text-zinc-400">Minutos jogados</label>
+                  <input
+                    type="number" min="0" max="120" step="1"
+                    placeholder="Ex: 90"
+                    value={finalForm.minutesPlayed}
+                    onChange={(e) => setFinalForm((f) => ({ ...f, minutesPlayed: e.target.value }))}
+                    className="w-full rounded-xl bg-zinc-800 px-3.5 py-2.5 text-sm text-white placeholder-zinc-500 ring-1 ring-white/10 outline-none focus:ring-2 focus:ring-blue-500 transition"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-xs font-medium text-zinc-400">
+                    Nota SofaScore <span className="text-zinc-600">(1–10)</span>
+                  </label>
+                  <input
+                    type="number" min="1" max="10" step="0.1"
+                    placeholder="Ex: 7.5"
+                    value={finalForm.sofaScore}
+                    onChange={(e) => setFinalForm((f) => ({ ...f, sofaScore: e.target.value }))}
+                    className="w-full rounded-xl bg-zinc-800 px-3.5 py-2.5 text-sm text-white placeholder-zinc-500 ring-1 ring-white/10 outline-none focus:ring-2 focus:ring-blue-500 transition"
+                  />
+                </div>
               </div>
 
               {saveError && (
