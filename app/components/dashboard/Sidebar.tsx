@@ -10,6 +10,7 @@ const BASE_ITEMS = [
   { href: "/dashboard/athletes", label: "Atletas" },
   { href: "/dashboard/scout", label: "Scout" },
   { href: "/dashboard/reports", label: "Relatórios" },
+  { href: "/dashboard/medias", label: "Médias Gerais" },
   { href: "/dashboard/encontros", label: "Encontros" },
   { href: "/dashboard/metas", label: "Metas" },
 ];
