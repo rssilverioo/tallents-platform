@@ -9,6 +9,8 @@ import {
   Zap,
   Shield,
   Users,
+  Clock,
+  Star,
 } from "lucide-react";
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
@@ -22,6 +24,8 @@ type AthleteStats = {
   reportCount: number;
   totalCounts: Record<string, number>;
   avgCounts: Record<string, number>;
+  minutesPlayed: { total: number; avg: number | null; gamesWithRecord: number };
+  sofaScore: { avg: number; max: number; min: number; gamesRated: number } | null;
 };
 
 // ── Seções de contagem (mesmas do scout) ──────────────────────────────────────
@@ -149,6 +153,76 @@ function AthleteStatsCard({ athlete }: { athlete: AthleteStats }) {
       {/* Painel expandido */}
       {expanded && (
         <div className="border-t border-white/5 p-5 space-y-5">
+
+          {/* Minutos jogados + SofaScore */}
+          {(athlete.minutesPlayed.gamesWithRecord > 0 || athlete.sofaScore) && (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {athlete.minutesPlayed.gamesWithRecord > 0 && (
+                <>
+                  <div className="rounded-2xl bg-white/5 p-3 ring-1 ring-white/10">
+                    <div className="mb-1 flex items-center gap-1.5">
+                      <Clock className="h-3.5 w-3.5 text-sky-400" />
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-sky-400">
+                        Min. Totais
+                      </p>
+                    </div>
+                    <p className="text-2xl font-bold text-white">
+                      {athlete.minutesPlayed.total}
+                    </p>
+                    <p className="text-[10px] text-zinc-500 mt-0.5">
+                      {athlete.minutesPlayed.gamesWithRecord} jogo{athlete.minutesPlayed.gamesWithRecord !== 1 ? "s" : ""} registrado{athlete.minutesPlayed.gamesWithRecord !== 1 ? "s" : ""}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl bg-white/5 p-3 ring-1 ring-white/10">
+                    <div className="mb-1 flex items-center gap-1.5">
+                      <Clock className="h-3.5 w-3.5 text-sky-400" />
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-sky-400">
+                        Média / Jogo
+                      </p>
+                    </div>
+                    <p className="text-2xl font-bold text-white">
+                      {athlete.minutesPlayed.avg ?? "—"}
+                    </p>
+                    <p className="text-[10px] text-zinc-500 mt-0.5">minutos</p>
+                  </div>
+                </>
+              )}
+
+              {athlete.sofaScore && (
+                <>
+                  <div className="rounded-2xl bg-white/5 p-3 ring-1 ring-white/10">
+                    <div className="mb-1 flex items-center gap-1.5">
+                      <Star className="h-3.5 w-3.5 text-amber-400" />
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-400">
+                        Nota Média
+                      </p>
+                    </div>
+                    <p className="text-2xl font-bold text-white">
+                      {athlete.sofaScore.avg.toFixed(2)}
+                    </p>
+                    <p className="text-[10px] text-zinc-500 mt-0.5">
+                      {athlete.sofaScore.gamesRated} jogo{athlete.sofaScore.gamesRated !== 1 ? "s" : ""} avaliado{athlete.sofaScore.gamesRated !== 1 ? "s" : ""}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl bg-white/5 p-3 ring-1 ring-white/10">
+                    <div className="mb-1 flex items-center gap-1.5">
+                      <Star className="h-3.5 w-3.5 text-amber-400" />
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-400">
+                        Melhor / Pior
+                      </p>
+                    </div>
+                    <p className="text-2xl font-bold text-white">
+                      {athlete.sofaScore.max.toFixed(1)}
+                    </p>
+                    <p className="text-[10px] text-zinc-500 mt-0.5">
+                      mín. {athlete.sofaScore.min.toFixed(1)}
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
           {/* Totais por seção */}
           {hasData && (
             <div className="grid grid-cols-3 gap-2">

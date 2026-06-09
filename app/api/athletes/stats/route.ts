@@ -20,6 +20,9 @@ export async function GET(req: Request) {
       analystReports: {
         select: { id: true, counts: true },
       },
+      scouts: {
+        select: { minutesPlayed: true, sofaScore: true },
+      },
     },
     orderBy: { name: "asc" },
   });
@@ -28,6 +31,7 @@ export async function GET(req: Request) {
     const reports = athlete.analystReports;
     const reportCount = reports.length;
 
+    // Aggregate action counts
     const totalCounts: Record<string, number> = {};
     for (const report of reports) {
       const counts = report.counts as Record<string, unknown>;
@@ -47,6 +51,27 @@ export async function GET(req: Request) {
       }
     }
 
+    // Minutes played (from scouts)
+    const minutesArr = athlete.scouts
+      .map((s) => s.minutesPlayed)
+      .filter((m): m is number => m !== null && m !== undefined);
+    const totalMinutes = minutesArr.reduce((a, b) => a + b, 0);
+    const avgMinutes =
+      minutesArr.length > 0
+        ? Math.round((totalMinutes / minutesArr.length) * 10) / 10
+        : null;
+
+    // SofaScore (only scouts where it was recorded)
+    const sofaArr = athlete.scouts
+      .map((s) => s.sofaScore)
+      .filter((s): s is number => s !== null && s !== undefined);
+    const avgSofaScore =
+      sofaArr.length > 0
+        ? Math.round((sofaArr.reduce((a, b) => a + b, 0) / sofaArr.length) * 100) / 100
+        : null;
+    const maxSofaScore = sofaArr.length > 0 ? Math.max(...sofaArr) : null;
+    const minSofaScore = sofaArr.length > 0 ? Math.min(...sofaArr) : null;
+
     return {
       id: athlete.id,
       name: athlete.name,
@@ -56,6 +81,14 @@ export async function GET(req: Request) {
       reportCount,
       totalCounts,
       avgCounts,
+      minutesPlayed: {
+        total: totalMinutes,
+        avg: avgMinutes,
+        gamesWithRecord: minutesArr.length,
+      },
+      sofaScore: sofaArr.length > 0
+        ? { avg: avgSofaScore!, max: maxSofaScore!, min: minSofaScore!, gamesRated: sofaArr.length }
+        : null,
     };
   });
 
