@@ -47,6 +47,8 @@ type ScoutCounts = {
   perdaPosse: number;
   dribleCompleto: number;
   dribleIncompleto: number;
+  dueloRasteiroGanho: number;
+  dueloRasteiroPerdido: number;
 };
 
 type Clip = {
@@ -72,6 +74,7 @@ const DEFAULT_COUNTS: ScoutCounts = {
   passeCampoDefensivo: 0, passeCampoOfensivo: 0,
   faltaCometida: 0, faltaSofrida: 0, impedimento: 0,
   perdaPosse: 0, dribleCompleto: 0, dribleIncompleto: 0,
+  dueloRasteiroGanho: 0, dueloRasteiroPerdido: 0,
 };
 
 const PASS_ACTIONS: ActionItem[] = [
@@ -103,8 +106,10 @@ const DEF_ACTIONS: ActionItem[] = [
   { key: "pressaoPosPerda",     label: "Pressão pós-perda" },
   { key: "aereoGanho",          label: "Aéreo ganho" },
   { key: "aereoPerdido",        label: "Aéreo perdido" },
-  { key: "passeCampoDefensivo", label: "Passe no campo defensivo" },
-  { key: "faltaCometida",       label: "Falta cometida" },
+  { key: "passeCampoDefensivo",   label: "Passe no campo defensivo" },
+  { key: "faltaCometida",         label: "Falta cometida" },
+  { key: "dueloRasteiroGanho",    label: "Duelo rasteiro ganho" },
+  { key: "dueloRasteiroPerdido",  label: "Duelo rasteiro perdido" },
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

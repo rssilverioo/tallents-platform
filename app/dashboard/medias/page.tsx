@@ -72,8 +72,10 @@ const SECTIONS = [
       ["Pressão pós-perda", "pressaoPosPerda"],
       ["Aéreo ganho",       "aereoGanho"],
       ["Aéreo perdido",     "aereoPerdido"],
-      ["Campo defensivo",   "passeCampoDefensivo"],
-      ["Falta cometida",    "faltaCometida"],
+      ["Campo defensivo",        "passeCampoDefensivo"],
+      ["Falta cometida",         "faltaCometida"],
+      ["Duelo rasteiro ganho",   "dueloRasteiroGanho"],
+      ["Duelo rasteiro perdido", "dueloRasteiroPerdido"],
     ] as [string, string][],
   },
 ];
